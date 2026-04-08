@@ -1,6 +1,8 @@
 from fastapi import FastAPI
+from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 import os
 import logging
@@ -14,6 +16,8 @@ from app.services.batch_loader import BatchLoader
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+FRONTEND_DIST_DIR = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+FRONTEND_INDEX_FILE = FRONTEND_DIST_DIR / "index.html"
 
 # Global loading state
 class LoadingState:
@@ -87,8 +91,16 @@ app.include_router(questions.router, prefix="/api/questions", tags=["questions"]
 app.include_router(analysis.router, prefix="/api/analysis", tags=["analysis"])
 app.include_router(resources.router, prefix="/api/resources", tags=["resources"])
 
-@app.get("/")
+if FRONTEND_DIST_DIR.exists():
+    assets_dir = FRONTEND_DIST_DIR / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+
+@app.get("/", include_in_schema=False)
 async def root():
+    if FRONTEND_INDEX_FILE.exists():
+        return FileResponse(FRONTEND_INDEX_FILE)
     return {
         "message": "Ghana SHS AI Question Generator API",
         "version": "0.1.0",
@@ -111,6 +123,21 @@ async def get_document_status():
         "status": "not_loaded",
         "message": "Documents not loaded. Auto-loading may be disabled or in progress."
     }
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def spa_fallback(full_path: str):
+    if full_path.startswith("api/") or full_path == "api":
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    target = FRONTEND_DIST_DIR / full_path
+    if target.is_file():
+        return FileResponse(target)
+
+    if FRONTEND_INDEX_FILE.exists():
+        return FileResponse(FRONTEND_INDEX_FILE)
+
+    raise HTTPException(status_code=404, detail="Not Found")
 
 if __name__ == "__main__":
     import uvicorn
