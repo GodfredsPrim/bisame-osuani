@@ -9,34 +9,58 @@ interface Message {
   suggestions?: string[];
 }
 
-const SafeMarkdown = ({ text }: { text: string }) => {
-  // Simple regex-based formatter for bold and bullets
-  const lines = text.split('\n');
-  return (
-    <>
-      {lines.map((line, i) => {
-        let content: any = line;
-        
-        // Handle Headers (e.g. **CONCEPT**)
-        if (line.startsWith('**') && line.endsWith('**')) {
-            return <h4 key={i} style={{ margin: '15px 0 8px', color: '#162a40', borderBottom: '1px solid #eee', paddingBottom: '4px' }}>{line.replace(/\*\*/g, '')}</h4>;
-        }
+const TutorExplanation = ({ text }: { text: string }) => {
+  const sections = text.split(/\*\*([^*]+)\*\*/g);
+  
+  // The split above will give us:
+  // [pre-content, HEADER1, content1, HEADER2, content2, ...]
+  
+  const renderedSections = [];
+  let header = "";
+  
+  for (let i = 0; i < sections.length; i++) {
+    const part = sections[i].trim();
+    if (!part) continue;
 
-        // Handle Bold
-        if (line.includes('**')) {
-          const parts = line.split('**');
-          content = parts.map((part, index) => index % 1 === 0 && index % 2 !== 0 ? <strong key={index}>{part}</strong> : part);
-        }
+    if (i % 2 === 1) {
+      // It's a header
+      header = part;
+    } else {
+      // It's content
+      if (header) {
+        let content: any = part;
+        // Clean up bullets within the content
+        const lines = part.split('\n').map(line => {
+             const cleanLine = line.trim().replace(/^[-*]\s*/, '');
+             if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+                 return <li key={line} className="tutor-li">{cleanLine}</li>;
+             }
+             return cleanLine ? <p key={line} className="tutor-p">{cleanLine}</p> : null;
+        });
 
-        // Handle Bullets
-        if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
-          return <li key={i} style={{ marginLeft: '20px', marginBottom: '5px' }}>{content.toString().replace(/^[-*]\s/, '')}</li>;
-        }
+        renderedSections.push(
+          <div key={header} className="tutor-section">
+            <div className="tutor-section-header">
+               {header === 'MAIN CONCEPT' && '🎯 '}
+               {header === 'EXPLANATION' && '💡 '}
+               {header === 'FAST FACT/TIP' && '✨ '}
+               {header === 'SUMMARY' && '📝 '}
+               {header}
+            </div>
+            <div className="tutor-section-body">
+              {lines}
+            </div>
+          </div>
+        );
+        header = "";
+      } else {
+        // Just general text before any headers
+        renderedSections.push(<p key={i} className="tutor-p">{part}</p>);
+      }
+    }
+  }
 
-        return <p key={i} style={{ marginBottom: '8px' }}>{content}</p>;
-      })}
-    </>
-  );
+  return <div className="tutor-explanation-card">{renderedSections}</div>;
 };
 
 export function StudyCoach() {
@@ -137,7 +161,7 @@ export function StudyCoach() {
           {messages.map((msg) => (
             <div key={msg.id} className={`message-bubble ${msg.sender}`}>
               <div className="message-text">
-                {msg.sender === 'ai' ? <SafeMarkdown text={msg.text} /> : msg.text}
+                {msg.sender === 'ai' ? <TutorExplanation text={msg.text} /> : msg.text}
               </div>
               {msg.suggestions && msg.suggestions.length > 0 && (
                 <div className="follow-up-suggestions">
