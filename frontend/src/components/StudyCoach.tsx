@@ -28,7 +28,6 @@ const TutorExplanation = ({ text }: { text: string }) => {
     } else {
       // It's content
       if (header) {
-        let content: any = part;
         // Clean up bullets within the content
         const lines = part.split('\n').map(line => {
              const cleanLine = line.trim().replace(/^[-*]\s*/, '');
