@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { analysisAPI, questionsAPI, ReliabilityResponse, StudentMasteryResponse, TeacherInsightsResponse } from '../services/api';
+import { useState } from 'react';
+import { analysisAPI, questionsAPI, StudentMasteryResponse, TeacherInsightsResponse } from '../services/api';
 
 export function AnalysisDashboard() {
   const [subject, setSubject] = useState('mathematics');

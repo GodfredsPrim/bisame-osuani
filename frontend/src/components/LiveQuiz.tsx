@@ -14,7 +14,6 @@ export function LiveQuiz() {
   const [selectedYear, setSelectedYear] = useState('Year 1');
   const [subject, setSubject] = useState('');
   const [difficulty, setDifficulty] = useState('medium');
-  const [questionType, setQuestionType] = useState('multiple_choice');
   const [codeInput, setCodeInput] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [state, setState] = useState<LiveQuizStateResponse | null>(null);
@@ -93,7 +92,7 @@ export function LiveQuiz() {
         player_name: playerName.trim(),
         subject,
         year: selectedYear,
-        question_type: questionType,
+        question_type: 'multiple_choice',
         num_questions: 5,
         difficulty_level: difficulty,
         time_limit: timeLimit,
