@@ -162,29 +162,78 @@ async def generate_questions(request: QuestionGenerationRequest):
 
 @router.get("/subjects")
 async def get_subjects():
+    """Get subjects from site catalog (Year 1 and Year 2)."""
+    import json
+    import re
+
     catalog_path = settings.SITE_RESOURCE_DIR / "subjects_catalog.json"
     subjects_list = []
     seen = set()
 
     if catalog_path.exists():
-        with open(catalog_path, "r", encoding="utf-8") as f:
-            catalog = json.load(f)
-        years = catalog.get("years", {})
-        for year_key in ["year_1", "year_2"]:
-            for subject_info in years.get(year_key, []):
-                name = subject_info.get("name", "").strip()
-                if not name: continue
-                slug = _subject_slug_from_url(subject_info.get("url", ""), year_key)
-                if not slug: slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
-                subject_id = f"{year_key}:{slug}"
-                if subject_id in seen: continue
-                seen.add(subject_id)
-                subjects_list.append({"id": subject_id, "name": name, "year": "Year 1" if year_key == "year_1" else "Year 2"})
+        try:
+            with open(catalog_path, "r", encoding="utf-8") as f:
+                catalog = json.load(f)
+
+            years = catalog.get("years", {})
+            for year_key in ["year_1", "year_2"]:
+                for subject_info in years.get(year_key, []):
+                    name = subject_info.get("name", "").strip()
+                    if not name:
+                        continue
+                    # Extract slug from URL if possible, else normalize name
+                    raw_url = subject_info.get("url", "")
+                    slug = _subject_slug_from_url(raw_url, year_key)
+                    if not slug:
+                        slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+                    
+                    subject_id = f"{year_key}:{slug}"
+                    if subject_id in seen:
+                        continue
+                    seen.add(subject_id)
+
+                    subjects_list.append(
+                        {
+                            "id": subject_id,
+                            "name": name,
+                            "year": "Year 1" if year_key == "year_1" else "Year 2",
+                        }
+                    )
+        except Exception as e:
+            logger.error(f"Error reading subjects catalog: {str(e)}")
 
     if not subjects_list:
-        # Fallback list omitted for brevity in thought, but included in final write.
-        pass 
-    
+        # Fallback values if site catalog is empty or missing.
+        known_subjects = {
+            "year_1": [
+                "Additional Mathematics", "Agricultural Science", "Agriculture", "Applied Technology", "Arabic",
+                "Biology", "Business Management", "Accounting", "Chemistry", "Computing",
+                "Economics", "English Language", "Geography", "Ghanaian Language", "Government", "History",
+                "Literature-in-English", "Mathematics", "Music", "Physics", "Social Studies", "French",
+            ],
+            "year_2": [
+                "Additional Mathematics", "Agricultural Science", "Agriculture", "Biology", "Accounting", 
+                "Business Management", "Chemistry", "Economics", "English Language", "French", "Geography",
+                "Ghanaian Language", "Government", "History", "Literature-in-English", "Mathematics", 
+                "Physics", "Social Studies",
+            ],
+        }
+
+        for year_key, names in known_subjects.items():
+            for name in names:
+                slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+                subject_id = f"{year_key}:{slug}"
+                if subject_id in seen:
+                    continue
+                seen.add(subject_id)
+                subjects_list.append(
+                    {
+                        "id": subject_id,
+                        "name": name,
+                        "year": "Year 1" if year_key == "year_1" else "Year 2",
+                    }
+                )
+
     subjects_list.sort(key=lambda x: (x["year"], x["name"]))
     return {"subjects": subjects_list}
 
