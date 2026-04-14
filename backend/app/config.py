@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     AUTH_SECRET_KEY: str = "change-this-auth-secret"
     ACCESS_TOKEN_EXPIRE_HOURS: int = 168
     GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
 
     # Admin Credentials
     ADMIN_USERNAME: str = "bisameadmin"

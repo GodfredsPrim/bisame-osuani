@@ -195,11 +195,32 @@ function App() {
     }
 
     const existing = document.getElementById(GOOGLE_SCRIPT_ID) as HTMLScriptElement | null
-    if (existing) {
+    const initGoogle = () => {
       const googleApi = (window as any).google
       if (googleApi?.accounts?.id) {
+        googleApi.accounts.id.initialize({
+          client_id: authConfig.google_client_id,
+          callback: async (response: { credential: string }) => {
+            setAuthLoading(true)
+            setAuthError('')
+            try {
+              const result = await authAPI.google(response.credential)
+              persistSession(result.access_token, result.user)
+            } catch (err: any) {
+              setAuthError(err?.response?.data?.detail || 'Google sign-in failed.')
+            } finally {
+              setAuthLoading(false)
+            }
+          },
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        })
         setGoogleReady(true)
       }
+    }
+
+    if (existing) {
+      initGoogle()
       return
     }
 
@@ -208,7 +229,7 @@ function App() {
     script.src = 'https://accounts.google.com/gsi/client'
     script.async = true
     script.defer = true
-    script.onload = () => setGoogleReady(true)
+    script.onload = initGoogle
     document.body.appendChild(script)
   }, [authConfig.google_client_id, authConfig.google_enabled])
 
@@ -292,7 +313,7 @@ function App() {
     }
   }
 
-  const handleGoogleAuth = async () => {
+  const handleGoogleAuth = () => {
     if (!authConfig.google_enabled || !authConfig.google_client_id) {
       setAuthError('Google sign-in is not configured yet. Add GOOGLE_CLIENT_ID in backend/.env.')
       return
@@ -300,37 +321,22 @@ function App() {
 
     const googleApi = (window as any).google
     if (!googleReady || !googleApi?.accounts?.id) {
-      setAuthError('Google sign-in is still loading. Please try again in a moment.')
+      setAuthError('Google sign-in is still loading. Please try again.')
       return
     }
 
-    setAuthLoading(true)
     setAuthError('')
-
     try {
-      googleApi.accounts.id.initialize({
-        client_id: authConfig.google_client_id,
-        callback: async (response: { credential?: string }) => {
-          if (!response.credential) {
-            setAuthError('Google sign-in did not return a credential.')
-            setAuthLoading(false)
-            return
-          }
-
-          try {
-            const result = await authAPI.google(response.credential)
-            persistSession(result.access_token, result.user)
-          } catch (err: any) {
-            setAuthError(err?.response?.data?.detail || 'Google sign-in failed.')
-          } finally {
-            setAuthLoading(false)
-          }
-        },
+      // Trigger the Google Identity prompt (One Tap / Credential Selector)
+      googleApi.accounts.id.prompt((notification: any) => {
+        if (notification.isNotDisplayed()) {
+          console.warn('One Tap not displayed:', notification.getNotDisplayedReason())
+          // If One Tap is suppressed (e.g. user closed it before), we might want to 
+          // tell the user to try again or use another method, or render a button.
+          setAuthError('Sign-in prompt was suppressed. Please try again or use email.')
+        }
       })
-
-      googleApi.accounts.id.prompt()
     } catch (err) {
-      setAuthLoading(false)
       setAuthError('Unable to start Google sign-in right now.')
     }
   }
