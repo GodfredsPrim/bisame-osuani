@@ -8,7 +8,7 @@ import ResourceFetcher from './components/ResourceFetcher'
 import { AdminDashboard } from './components/AdminDashboard'
 import { GlobalLeaderboard } from './components/Leaderboard'
 import { CompetitionPortal } from './components/CompetitionPortal'
-import { authAPI, questionsAPI, setAuthToken, type AuthConfigResponse, type AuthUser } from './services/api'
+import { authAPI, adminAPI, questionsAPI, setAuthToken, type AuthConfigResponse, type AuthUser } from './services/api'
 
 type AppTab = 'study' | 'generator' | 'live_quiz' | 'competitions' | 'analysis' | 'resources' | 'leaderboard' | 'admin'
 type AuthTarget = AppTab
@@ -113,6 +113,8 @@ function App() {
   })
   const [authLoading, setAuthLoading] = React.useState(false)
   const [googleReady, setGoogleReady] = React.useState(false)
+  const [accessCode, setAccessCode] = React.useState('')
+  const [codeError, setCodeError] = React.useState('')
   const [codeLoading, setCodeLoading] = React.useState(false)
   const [adminAuthOpen, setAdminAuthOpen] = React.useState(false)
   const [adminSecretIn, setAdminSecretIn] = React.useState('')

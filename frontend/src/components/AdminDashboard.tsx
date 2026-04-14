@@ -23,7 +23,6 @@ export const AdminDashboard: React.FC = () => {
   const [couponBusy, setCouponBusy] = useState(false);
   const [couponForm, setCouponForm] = useState({ quantity: 5, durationMonths: 3 });
   const [generatedCodes, setGeneratedCodes] = useState<string[]>([]);
-  const [adminLogin, setAdminLogin] = useState({ username: '', password: '' });
 
   const [newComp, setNewComp] = useState({
     title: '',
@@ -66,18 +65,7 @@ export const AdminDashboard: React.FC = () => {
     return () => clearInterval(pollId);
   }, []);
 
-  const handleAdminLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const { access_token } = await adminAPI.login(adminLogin.username, adminLogin.password);
-      localStorage.setItem('bisame_access_token', access_token);
-      setAuthToken(access_token);
-      window.location.hash = 'admin';
-      window.location.reload();
-    } catch (err: any) {
-      alert('Login Failed: ' + (err?.response?.data?.detail || 'Error'));
-    }
-  };
+
 
   const handleCreateCompetition = async (e: React.FormEvent) => {
     e.preventDefault();
