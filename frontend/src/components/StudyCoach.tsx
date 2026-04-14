@@ -1,187 +1,377 @@
-import { useState, useRef, useEffect } from 'react';
-import { tutorAPI, questionsAPI } from '../services/api';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { questionsAPI, tutorAPI, type TutorResponse } from '../services/api';
 
 interface Message {
   id: string;
-  text: string;
   sender: 'user' | 'ai';
-  timestamp: number;
+  text: string;
+  response?: TutorResponse;
   suggestions?: string[];
 }
 
-const TutorExplanation = ({ text }: { text: string }) => {
-  // Since we only want the Main Concept now, we just render the raw text 
-  // but strip any residual markdown symbols if the LLM includes them.
-  const cleanText = text.replace(/\*\*|##|---|[*_-]/g, '').trim();
-  
+interface StudyCoachProps {
+  isAuthenticated: boolean;
+  guestChatsRemaining: number;
+  guestChatLimit: number;
+  onRequireAuth: () => void;
+  onConsumeGuestChat: () => boolean;
+  userId: number | null;
+}
+
+const STARTERS = [
+  { icon: '📐', text: 'Solve 3x + 7 = 25 step by step' },
+  { icon: '🌿', text: 'Explain photosynthesis in simple SHS language' },
+  { icon: '📈', text: 'WASSCE-style explanation of demand and supply' },
+  { icon: '🖼️', text: 'Interpret an image and show the working' },
+];
+
+async function fileToBase64(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return window.btoa(binary);
+}
+
+function AIMessage({ response }: { response: TutorResponse }) {
   return (
-    <div className="tutor-explanation-card">
-      <div className="tutor-section" style={{ borderLeft: '4px solid var(--ghana-green)' }}>
-        <div className="tutor-section-header">
-           🎯 Verified Textbook Insight
+    <div className="ai-response">
+      <p className="ai-response__main">{response.explanation}</p>
+
+      {response.extracted_text && (
+        <div className="ai-response__block">
+          <span className="ai-response__label">Extracted question</span>
+          <p>{response.extracted_text}</p>
         </div>
-        <div className="tutor-section-body">
-          <p className="tutor-p" style={{ fontSize: '1.1rem', fontWeight: 500 }}>{cleanText}</p>
+      )}
+
+      {response.steps && response.steps.length > 0 && (
+        <div className="ai-response__block">
+          <span className="ai-response__label">Step-by-step</span>
+          <ol className="ai-response__steps">
+            {response.steps.map((s, i) => <li key={i}>{s}</li>)}
+          </ol>
         </div>
-      </div>
+      )}
+
+      {response.study_tips && response.study_tips.length > 0 && (
+        <div className="ai-response__block">
+          <span className="ai-response__label">Study tips</span>
+          <ul className="ai-response__tips">
+            {response.study_tips.map((t, i) => <li key={i}>{t}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {response.confidence_note && (
+        <p className="ai-response__note">{response.confidence_note}</p>
+      )}
     </div>
   );
-};
+}
 
-export function StudyCoach() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      text: "Hello! I'm your AI Study Buddy. Ask me anything about your SHS subjects, and I'll explain it clearly for you. What would you like to learn today?",
-      sender: 'ai',
-      timestamp: Date.now(),
-    }
-  ]);
+export function StudyCoach({
+  isAuthenticated,
+  guestChatsRemaining,
+  onRequireAuth,
+  onConsumeGuestChat,
+  userId,
+}: StudyCoachProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [subject, setSubject] = useState('General');
-  const [subjects, setSubjects] = useState<any[]>([]);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [subjects, setSubjects] = useState<Array<{ id: string; name: string; year: string }>>([]);
+  const [image, setImage] = useState<File | null>(null);
+  const [historyItems, setHistoryItems] = useState<Array<{ id: number; content: string; created_at: string }>>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const hasMessages = messages.length > 0;
 
   useEffect(() => {
-    const loadSubjects = async () => {
-      try {
-        const data = await questionsAPI.getSubjects();
-        setSubjects(data.subjects || []);
-      } catch (err) {
-        console.error('Failed to load subjects', err);
-      }
-    };
-    loadSubjects();
+    questionsAPI.getSubjects()
+      .then(d => setSubjects(d.subjects || []))
+      .catch(() => {});
   }, []);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // Load history for authenticated users
+  useEffect(() => {
+    if (!isAuthenticated || !userId) return;
+    tutorAPI.getHistory(40)
+      .then(d => setHistoryItems(d.messages.filter(m => m.role === 'user').slice(-20).reverse()))
+      .catch(() => {});
+  }, [isAuthenticated, userId]);
 
-  useEffect(scrollToBottom, [messages]);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-  const handleSend = async (textOverride?: string) => {
-    const textToSend = textOverride || input;
-    if (!textToSend.trim() || loading) return;
+  // Auto-resize textarea
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 180) + 'px';
+  }, [input]);
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: textToSend,
-      sender: 'user',
-      timestamp: Date.now(),
-    };
+  const newChat = useCallback(() => {
+    setMessages([]);
+    setInput('');
+    setImage(null);
+    setSidebarOpen(false);
+  }, []);
 
-    setMessages(prev => [...prev, userMessage]);
+  const send = async (override?: string) => {
+    const text = (override ?? input).trim();
+    if ((!text && !image) || loading) return;
+
+    if (!isAuthenticated && !onConsumeGuestChat()) return;
+
+    const userText = image ? `${text || 'Interpret this image.'}\n[Image: ${image.name}]` : text;
+
+    setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'user', text: userText }]);
     setInput('');
     setLoading(true);
 
     try {
-      const response = await tutorAPI.ask(textToSend, subject);
-      
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: response.explanation,
+      const res = image
+        ? await tutorAPI.interpretImage(await fileToBase64(image), text || 'Interpret this image.', subject, '', image.name, image.type)
+        : await tutorAPI.ask(text, subject, '');
+
+      setMessages(prev => [...prev, {
+        id: Date.now() + '-ai',
         sender: 'ai',
-        timestamp: Date.now(),
-        suggestions: response.related_questions
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (err) {
-      const errorMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        text: "I'm sorry, I encountered an error. Please try again or check your connection.",
+        text: res.explanation,
+        response: res,
+        suggestions: res.related_questions?.slice(0, 3) ?? [],
+      }]);
+      setImage(null);
+    } catch {
+      setMessages(prev => [...prev, {
+        id: Date.now() + '-err',
         sender: 'ai',
-        timestamp: Date.now(),
-      };
-      setMessages(prev => [...prev, errorMsg]);
+        text: '',
+        response: { explanation: "Sorry, something went wrong. Please try again." },
+      }]);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="generator-section" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div className="generator-hero">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <div style={{ fontSize: '2.5rem' }}>🎓</div>
-          <div>
-            <h2>Study With AI</h2>
-            <p>Your interactive SHS tutor for instant, simplified explanations.</p>
+    <div className="gemini-shell">
+
+      {/* ── Thin history sidebar ──────────────────────────────── */}
+      {sidebarOpen && (
+        <aside className="gemini-sidebar">
+          <div className="gemini-sidebar__head">
+            <span>Chat history</span>
+            <button className="gemini-sidebar__close" onClick={() => setSidebarOpen(false)}>✕</button>
+          </div>
+          <button className="gemini-sidebar__new" onClick={newChat}>+ New chat</button>
+          {historyItems.length === 0 && (
+            <p className="gemini-sidebar__empty">No history yet.</p>
+          )}
+          {historyItems.map(m => (
+            <button key={m.id} className="gemini-sidebar__item" onClick={() => { send(m.content); setSidebarOpen(false); }}>
+              {m.content.slice(0, 48)}{m.content.length > 48 ? '…' : ''}
+            </button>
+          ))}
+        </aside>
+      )}
+
+      {/* ── Main chat area ───────────────────────────────────── */}
+      <div className="gemini-main">
+
+        {/* Top-left controls */}
+        <div className="gemini-toprow">
+          <div className="gemini-toprow__left">
+            {isAuthenticated && (
+              <button className="gemini-icon-btn" onClick={() => setSidebarOpen(v => !v)} title="Chat history">
+                <HistoryIcon />
+              </button>
+            )}
+            {hasMessages && (
+              <button className="gemini-icon-btn" onClick={newChat} title="New chat">
+                <NewChatIcon />
+              </button>
+            )}
+          </div>
+          <div className="gemini-toprow__right">
+            {!isAuthenticated && (
+              <span className="gemini-guest-chip" onClick={onRequireAuth}>
+                {guestChatsRemaining} free {guestChatsRemaining === 1 ? 'chat' : 'chats'} left · Sign up
+              </span>
+            )}
           </div>
         </div>
-      </div>
 
-      <div className="form-group" style={{ maxWidth: '300px' }}>
-        <label>Subject Context:</label>
-        <select value={subject} onChange={(e) => setSubject(e.target.value)}>
-          <option value="General">General SHS Topics</option>
-          {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-      </div>
-
-      <div className="chat-container">
-        <div className="messages-list">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`message-bubble ${msg.sender}`}>
-              <div className="message-text">
-                {msg.sender === 'ai' ? <TutorExplanation text={msg.text} /> : msg.text}
-              </div>
-              {msg.suggestions && msg.suggestions.length > 0 && (
-                <div className="follow-up-suggestions">
-                    <p style={{ width: '100%', fontSize: '0.8rem', opacity: 0.7, margin: '8px 0 4px' }}>Follow-up questions:</p>
-                  {msg.suggestions.map((s, i) => (
-                    <button 
-                      key={i} 
-                      className="suggestion-chip"
-                      onClick={() => handleSend(s)}
-                      disabled={loading}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              )}
+        {/* Welcome screen — shown when no messages */}
+        {!hasMessages && (
+          <div className="gemini-welcome">
+            <div className="gemini-welcome__logo">
+              <div className="gemini-welcome__mark">B</div>
             </div>
-          ))}
-          {loading && (
-            <div className="message-bubble ai">
-              <div className="thinking-indicator">
-                <div className="thinking-dot"></div>
-                <div className="thinking-dot"></div>
-                <div className="thinking-dot"></div>
+            <h1 className="gemini-welcome__title">How can I help you study?</h1>
+            <p className="gemini-welcome__sub">Ask a question, upload an image, or pick a starter below.</p>
+
+            <div className="gemini-starters">
+              {STARTERS.map(s => (
+                <button key={s.text} className="gemini-starter" onClick={() => send(s.text)}>
+                  <span className="gemini-starter__icon">{s.icon}</span>
+                  <span>{s.text}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Message list */}
+        {hasMessages && (
+          <div className="gemini-messages">
+            {messages.map(m => (
+              <div key={m.id} className={`gemini-msg gemini-msg--${m.sender}`}>
+                {m.sender === 'ai' && (
+                  <div className="gemini-msg__avatar">B</div>
+                )}
+                <div className="gemini-msg__body">
+                  {m.sender === 'ai' && m.response
+                    ? <AIMessage response={m.response} />
+                    : <p className="gemini-msg__text">{m.text}</p>
+                  }
+                  {m.suggestions && m.suggestions.length > 0 && (
+                    <div className="gemini-follow">
+                      {m.suggestions.map((s, i) => (
+                        <button key={i} className="gemini-follow__chip" onClick={() => send(s)}>{s}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
+            ))}
+
+            {loading && (
+              <div className="gemini-msg gemini-msg--ai">
+                <div className="gemini-msg__avatar">B</div>
+                <div className="gemini-thinking">
+                  <span /><span /><span />
+                </div>
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+        )}
+
+        {/* Input bar */}
+        <div className="gemini-input-wrap">
+          {image && (
+            <div className="gemini-image-chip">
+              <span>📎 {image.name}</span>
+              <button onClick={() => setImage(null)}>✕</button>
             </div>
           )}
-          <div ref={messagesEndRef} />
-        </div>
 
-        <form 
-          className="chat-input-area" 
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSend();
-          }}
-        >
-          <input
-            className="chat-input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask me anything (e.g., 'Explain mitosis' or 'WASSCE tips for Core Maths')..."
-            disabled={loading}
-          />
-          <button 
-            type="submit" 
-            className="btn-primary" 
-            style={{ padding: '0 25px' }}
-            disabled={loading || !input.trim()}
-          >
-            Send
-          </button>
-        </form>
+          <div className="gemini-input-bar">
+            {/* Subject pill */}
+            <select
+              className="gemini-subject"
+              value={subject}
+              onChange={e => setSubject(e.target.value)}
+              title="Choose subject"
+            >
+              <option value="General">General</option>
+              {subjects.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+
+            <textarea
+              ref={textareaRef}
+              className="gemini-textarea"
+              placeholder="Ask BisaME Tutor anything…"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              disabled={loading}
+              rows={1}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+              }}
+            />
+
+            {/* Image attach */}
+            <button
+              className="gemini-icon-btn gemini-attach"
+              onClick={() => fileRef.current?.click()}
+              title="Attach image"
+            >
+              <AttachIcon />
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={e => setImage(e.target.files?.[0] ?? null)}
+            />
+
+            {/* Send */}
+            <button
+              className={`gemini-send ${(input.trim() || image) ? 'gemini-send--active' : ''}`}
+              onClick={() => send()}
+              disabled={loading || (!input.trim() && !image)}
+            >
+              <SendIcon />
+            </button>
+          </div>
+
+          <p className="gemini-disclaimer">BisaME can make mistakes. Verify important answers.</p>
+        </div>
       </div>
     </div>
+  );
+}
+
+// ── Icons ──────────────────────────────────────────────────────────────────────
+
+function SendIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13" />
+      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+    </svg>
+  );
+}
+
+function AttachIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+
+function HistoryIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="12 8 12 12 14 14" />
+      <path d="M3.05 11a9 9 0 1 0 .5-4.1" />
+      <polyline points="3 7 3 11 7 11" />
+    </svg>
+  );
+}
+
+function NewChatIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
   );
 }
 

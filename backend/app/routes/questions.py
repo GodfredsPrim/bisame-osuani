@@ -374,3 +374,35 @@ async def submit_live_quiz(code: str, request: LiveQuizSubmitRequest):
             "percentage": result["percentage"],
         })
     return {"status": "submitted", "result": result}
+
+
+from fastapi import Depends
+from app.routes.auth import get_current_user
+from app.models import AuthUser, ExamHistorySaveRequest, ExamHistoryResponse
+from app.services.auth_service import AuthService
+
+history_auth_service = AuthService()
+
+@router.post("/history/exams", response_model=dict)
+async def save_exam_history(request: ExamHistorySaveRequest, current_user: AuthUser = Depends(get_current_user)):
+    try:
+        history_auth_service.save_exam_history(
+            user_id=current_user.id,
+            exam_type=request.exam_type,
+            subject=request.subject,
+            score=request.score_obtained,
+            total=request.total_questions,
+            percentage=request.percentage,
+            details_json=request.details_json,
+        )
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/history/exams", response_model=list[ExamHistoryResponse])
+async def get_exam_history(current_user: AuthUser = Depends(get_current_user)):
+    try:
+        records = history_auth_service.get_exam_history(current_user.id, limit=20)
+        return records
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

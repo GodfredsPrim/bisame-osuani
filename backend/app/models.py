@@ -218,12 +218,188 @@ class LiveQuizSubmitRequest(BaseModel):
     player_name: str
     answers: List[str]
 
+class ExamHistorySaveRequest(BaseModel):
+    exam_type: str
+    subject: str
+    score_obtained: float
+    total_questions: int
+    percentage: float
+    details_json: str
+
+class ExamHistoryResponse(BaseModel):
+    id: int
+    exam_type: str
+    subject: str
+    score_obtained: float
+    total_questions: int
+    percentage: float
+    details_json: str
+    created_at: str
+
+
 class TutorRequest(BaseModel):
     question: str
     subject: Optional[str] = None
     context: Optional[str] = None
 
 
+class TutorImageRequest(BaseModel):
+    question: str
+    subject: Optional[str] = None
+    context: Optional[str] = None
+    filename: Optional[str] = None
+    content_type: Optional[str] = None
+    image_base64: str
+
+
 class TutorResponse(BaseModel):
     explanation: str
     related_questions: Optional[List[str]] = None
+    mode: Optional[str] = None
+    extracted_text: Optional[str] = None
+    study_tips: Optional[List[str]] = None
+    steps: Optional[List[str]] = None
+    confidence_note: Optional[str] = None
+
+
+class AuthSignupRequest(BaseModel):
+    full_name: str
+    email: str
+    password: str
+
+
+class AuthLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class GoogleAuthRequest(BaseModel):
+    credential: str
+
+
+class AuthUser(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    provider: str
+    subscription_status: str = "inactive"   # inactive | active | expired
+    subscription_expires_at: Optional[str] = None
+    is_admin: bool = False
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: AuthUser
+
+
+class AuthConfigResponse(BaseModel):
+    google_client_id: str = ""
+    google_enabled: bool = False
+    facebook_enabled: bool = False
+    tiktok_enabled: bool = False
+    passkey_enabled: bool = False
+
+
+# ── Access-code / subscription models ─────────────────────────────────────────
+
+class AccessCodeVerifyRequest(BaseModel):
+    code: str
+
+
+class AdminCodeGenerateRequest(BaseModel):
+    admin_secret: str
+    duration_months: Optional[int] = None   # defaults to settings value
+    quantity: int = 1
+
+
+class AdminCodeGenerateResponse(BaseModel):
+    codes: List[str]
+    duration_months: int
+    price_ghs: str
+
+
+class SubscriptionStatusResponse(BaseModel):
+    status: str          # inactive | active | expired
+    expires_at: Optional[str] = None
+    days_remaining: Optional[int] = None
+    price_ghs: str
+    subscription_months: int
+
+
+class PaymentManualRequest(BaseModel):
+    momo_name: str
+    momo_number: str
+    reference: str
+
+
+class PaymentRequest(BaseModel):
+    id: int
+    user_id: int
+    full_name: str
+    email: str
+    momo_name: str
+    momo_number: str
+    reference: Optional[str] = None
+    status: str
+    created_at: str
+
+
+# ── Chat history models ────────────────────────────────────────────────────────
+
+class ChatHistoryMessage(BaseModel):
+    id: int
+    role: str          # "user" | "ai"
+    content: str
+    subject: Optional[str] = None
+    created_at: str
+
+
+class ChatHistoryResponse(BaseModel):
+    messages: List[ChatHistoryMessage]
+
+
+# ── Admin & Competition models ────────────────────────────────────────────────
+
+class AdminAnalytics(BaseModel):
+    total_users: int
+    active_subscriptions: int
+    expiring_subscriptions: int
+    total_revenue_ghs: float
+    total_codes_generated: int
+    total_codes_used: int
+    recent_activity: List[dict]
+
+
+class Competition(BaseModel):
+    id: int
+    title: str
+    description: str
+    prize: str
+    start_date: str
+    end_date: str
+    is_active: bool
+    quiz_json: Optional[str] = None
+    pdf_url: Optional[str] = None
+    created_at: str
+
+
+class CompetitionCreateRequest(BaseModel):
+    title: str
+    description: str
+    prize: str
+    start_date: str
+    end_date: str
+    quiz_json: Optional[str] = None
+    pdf_url: Optional[str] = None
+
+
+class CompetitionRegistrationRequest(BaseModel):
+    competition_id: int
+
+
+class LeaderboardEntry(BaseModel):
+    player_name: str
+    total_points: int
+    rank: int
+    is_online: bool = False

@@ -70,6 +70,24 @@ An AI-powered web application that generates exam questions for Ghana Secondary 
 
 ## Getting Started
 
+### Quick Start From Root
+
+From the repository root, you can start the system more systematically with:
+
+```powershell
+.\start_system.ps1
+```
+
+Optional flags:
+
+```powershell
+.\start_system.ps1 -SkipInstall
+.\start_system.ps1 -BackendOnly
+.\start_system.ps1 -FrontendOnly
+```
+
+See [SYSTEM_WORKFLOW.md](./SYSTEM_WORKFLOW.md) for the recommended operating flow when adding new features.
+
 ### Prerequisites
 
 - Python 3.9+
@@ -109,11 +127,13 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-6. Add your OpenAI API key to `.env`:
+6. Add your API keys and configuration to `.env`:
 ```
 OPENAI_API_KEY=your-api-key-here
 DATABASE_URL=sqlite:///./gh_shs.db
 ```
+
+The full supported configuration list lives in `backend/.env.example`.
 
 7. Run the server:
 ```bash

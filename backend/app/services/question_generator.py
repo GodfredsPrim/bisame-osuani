@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class QuestionGenerator:
     def __init__(self):
-        self.llm = None
+        self.llms: dict[float, ChatOpenAI] = {}
 
     async def generate_questions(
         self,
@@ -76,7 +76,8 @@ class QuestionGenerator:
                 subject_label,
             )
             response = await asyncio.wait_for(self._call_llm(prompt), timeout=120.0)
-            return self._parse_response(response, subject, question_type, num_questions)
+            questions = self._parse_response(response, subject, question_type, num_questions)
+            return await self._validate_and_repair_questions(questions, subject, question_type)
         except asyncio.TimeoutError:
             error_msg = "Question generation took too long (timeout after 120 seconds). Please try again."
             logger.error(error_msg)
@@ -85,10 +86,9 @@ class QuestionGenerator:
             logger.error(f"Error generating questions: {str(e)}")
             raise Exception(f"Error generating questions: {str(e)}")
 
-    def _get_llm(self) -> ChatOpenAI:
-        if self.llm is not None:
-            return self.llm
-
+    def _get_llm(self, temperature: float = 0.85) -> ChatOpenAI:
+        if temperature in self.llms:
+            return self.llms[temperature]
         api_key = settings.resolved_llm_api_key
         if not api_key:
             raise ValueError(
@@ -99,16 +99,17 @@ class QuestionGenerator:
         kwargs = {
             "model": settings.resolved_llm_model,
             "api_key": api_key,
-            "temperature": 0.7,
+            "temperature": temperature,
             "request_timeout": 120.0,  # Add timeout
             "max_retries": 3,  # Retry on failure
         }
         if settings.resolved_llm_base_url:
             kwargs["base_url"] = settings.resolved_llm_base_url
 
-        logger.info(f"Initializing LLM: {settings.resolved_llm_model}")
-        self.llm = ChatOpenAI(**kwargs)
-        return self.llm
+        logger.info(f"Initializing LLM: {settings.resolved_llm_model} (temperature={temperature})")
+        llm = ChatOpenAI(**kwargs)
+        self.llms[temperature] = llm
+        return llm
 
     def _build_prompt(
         self,
@@ -149,6 +150,14 @@ Format example:
 Make sure the sub-questions are logically related but test different cognitive levels (recall vs application).
 """
 
+        math_augmentation = ""
+        subject_search = (subject_label or subject_slug).lower()
+        if any(kw in subject_search for kw in ["math", "physics", "accounting"]):
+            math_augmentation = """
+*** CRITICAL QUANTITATIVE RULE ***
+You MUST generate purely quantitative, computational problems. Do NOT generate generic book explanations, theory, definitions, or "What is" questions for this subject. All generated questions must require solving for a numerical or algebraic value, strictly following the format and style of the Past Question Excerpts.
+"""
+
         return f"""Generate {num_questions} distinct {difficulty} level {question_type.value.replace('_', ' ')} questions for Ghana SHS {display_subject} ({year_key.replace('_', ' ').title()}).
 
 Requirements:
@@ -161,7 +170,12 @@ Requirements:
 7. If past-question excerpts are available, do NOT use textbook excerpts at all; derive questions from past-question patterns only.
 8. If past-question excerpts are unavailable for this subject, generate from textbook excerpts only.
 9. Use teacher resource notes to improve tips/tricks and exam strategy where available.
+
+*** CRITICAL RANDOMIZATION DIRECTIVE ***
+Seed Token: {random.randint(10000, 99999)}
+You MUST generate completely novel and varied questions. Do NOT repeat standardized textbook examples. Focus on completely random sub-topics, varied numerical values, and unique scenarios to ensure absolute efficiency and zero repetition across generations.
 {essay_augmentation}
+{math_augmentation}
 Past Question Excerpts:
 {past_block}
 
@@ -296,17 +310,89 @@ Only include "options" for multiple choice questions (leave omit for essay). Do 
         except Exception:
             return ""
 
-    async def _call_llm(self, prompt: str) -> str:
+    async def _call_llm(self, prompt: str, temperature: float = 0.85) -> str:
         """Call the LLM to generate a response."""
         try:
             logger.debug("Calling LLM with prompt...")
             from langchain_core.messages import HumanMessage
-            message = await self._get_llm().ainvoke([HumanMessage(content=prompt)])
+            message = await self._get_llm(temperature=temperature).ainvoke([HumanMessage(content=prompt)])
             logger.info("LLM response received successfully")
             return message.content
         except Exception as e:
             logger.error(f"LLM call failed: {str(e)}")
             raise
+
+    async def _validate_and_repair_questions(
+        self,
+        questions: list[Question],
+        subject: Subject,
+        question_type: QuestionType,
+    ) -> list[Question]:
+        if not questions:
+            return questions
+
+        repaired_questions: list[Question] = []
+        for start in range(0, len(questions), 10):
+            batch = questions[start:start + 10]
+            repaired_questions.extend(
+                await self._repair_question_batch(batch, subject, question_type)
+            )
+        return repaired_questions
+
+    async def _repair_question_batch(
+        self,
+        questions: list[Question],
+        subject: Subject,
+        question_type: QuestionType,
+    ) -> list[Question]:
+        serialized_questions = [
+            {
+                "question": question.question_text,
+                "options": question.options,
+                "correct_answer": question.correct_answer,
+                "explanation": question.explanation,
+                "difficulty": question.difficulty_level,
+            }
+            for question in questions
+        ]
+
+        prompt = (
+            "Review the following generated exam questions for internal consistency. "
+            "Check that each correct_answer matches the options and the explanation, and that the explanation's final conclusion agrees with the correct_answer. "
+            "If any item is inconsistent, fix it. Preserve the question style and difficulty. "
+            "Return valid JSON only as an array with the same number of objects and keys.\n"
+            f"Subject: {subject.value}\n"
+            f"Question type: {question_type.value}\n"
+            f"Questions:\n{json.dumps(serialized_questions, ensure_ascii=False)}"
+        )
+
+        try:
+            response = await asyncio.wait_for(self._call_llm(prompt, temperature=0.1), timeout=90.0)
+            json_start = response.find("[")
+            json_end = response.rfind("]") + 1
+            reviewed = json.loads(response[json_start:json_end])
+            if not isinstance(reviewed, list) or len(reviewed) != len(questions):
+                return questions
+
+            repaired = []
+            for original, item in zip(questions, reviewed):
+                repaired.append(
+                    Question(
+                        subject=original.subject,
+                        question_type=original.question_type,
+                        question_text=item.get("question", original.question_text),
+                        options=item.get("options", original.options) if original.question_type == QuestionType.MULTIPLE_CHOICE else original.options,
+                        correct_answer=item.get("correct_answer", original.correct_answer),
+                        explanation=item.get("explanation", original.explanation),
+                        difficulty_level=item.get("difficulty", original.difficulty_level),
+                        year_generated=original.year_generated,
+                        pattern_confidence=original.pattern_confidence,
+                    )
+                )
+            return repaired
+        except Exception:
+            logger.warning("Question consistency review failed; returning original questions.")
+            return questions
 
     def _normalize_answer(self, text: str) -> str:
         return re.sub(r"\s+", " ", (text or "").strip().lower())

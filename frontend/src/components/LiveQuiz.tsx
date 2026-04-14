@@ -46,8 +46,8 @@ export function LiveQuiz() {
 
   useEffect(() => {
     const first = filteredSubjects[0];
-    if (first) setSubject(first.id);
-  }, [selectedYear, filteredSubjects]);
+    if (first && !filteredSubjects.some(s => s.id === subject)) setSubject(first.id);
+  }, [selectedYear, filteredSubjects, subject]);
 
   useEffect(() => {
     if (!roomCode) return;
@@ -56,13 +56,8 @@ export function LiveQuiz() {
         const latest = await questionsAPI.getLiveQuizState(roomCode);
         setState(latest);
         
-        // If we don't have a local result but the leaderboard says we submitted,
-        // we should reflect that in the UI.
         const me = latest.leaderboard.find(p => p.player.toLowerCase() === playerName.toLowerCase());
         if (me?.submitted && !result) {
-            // We can't easily reconstruct the full PracticeMarkResponse here 
-            // without a dedicated endpoint, but we can at least disable the button
-            // and show the percentage from the leaderboard.
             setResult({
                 percentage: me.percentage,
                 score_obtained: me.score,
@@ -75,7 +70,7 @@ export function LiveQuiz() {
       }
     }, 2500);
     return () => clearInterval(poll);
-  }, [roomCode]);
+  }, [roomCode, playerName, result]);
 
   useEffect(() => {
     if (!state || result) {
@@ -118,7 +113,7 @@ export function LiveQuiz() {
       setAnswers({});
       setResult(null);
     } catch (err) {
-      const msg = axios.isAxiosError(err) ? (err.response?.data?.detail || err.message) : 'Failed to create room.';
+      const msg = axios.isAxiosError(err) ? (err.response?.data?.detail || err.message) : 'Failed to create quiz room.';
       setError(msg);
     } finally {
       setLoading(false);
@@ -128,7 +123,7 @@ export function LiveQuiz() {
   const joinRoom = async () => {
     setError('');
     if (!playerName.trim()) return setError('Enter your name first.');
-    if (!codeInput.trim()) return setError('Enter quiz code.');
+    if (!codeInput.trim()) return setError('Enter the room code.');
     setLoading(true);
     try {
       const code = codeInput.trim().toUpperCase();
@@ -138,7 +133,7 @@ export function LiveQuiz() {
       setState(latest);
       setResult(null);
     } catch (err) {
-      const msg = axios.isAxiosError(err) ? (err.response?.data?.detail || err.message) : 'Failed to join room.';
+      const msg = axios.isAxiosError(err) ? (err.response?.data?.detail || err.message) : 'Failed to join quiz room.';
       setError(msg);
     } finally {
       setLoading(false);
@@ -153,40 +148,66 @@ export function LiveQuiz() {
       const arr = Array.from({ length: maxIndex }, (_, i) => answers[i] || '');
       const submitted = await questionsAPI.submitLiveQuiz(roomCode, playerName.trim(), arr);
       setResult(submitted.result);
-      // Immediately poll for the latest state to update leaderboard
       const latest = await questionsAPI.getLiveQuizState(roomCode);
       setState(latest);
+
+      // Save to global history for leaderboard points
+      try {
+        await questionsAPI.saveExamHistory({
+          exam_type: 'challenge_quiz',
+          subject: subject,
+          score_obtained: submitted.result.score_obtained,
+          total_questions: submitted.result.total_questions,
+          percentage: submitted.result.percentage,
+          details_json: JSON.stringify(submitted.result.results || [])
+        });
+      } catch (historyErr) {
+        console.warn('Failed to save challenge history:', historyErr);
+      }
     } catch (err) {
-      const msg = axios.isAxiosError(err) ? (err.response?.data?.detail || err.message) : 'Failed to submit quiz.';
+      const msg = axios.isAxiosError(err) ? (err.response?.data?.detail || err.message) : 'Failed to submit quiz score.';
       setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
+  const getRankBadge = (index: number) => {
+    if (index === 0) return '🥇';
+    if (index === 1) return '🥈';
+    if (index === 2) return '🥉';
+    return `${index + 1}.`;
+  };
+
   return (
-    <div className={`generator-section ${roomCode ? 'battle-mode-active' : ''}`}>
+    <div className={`generator-section ${roomCode ? 'quiz-active' : ''}`}>
       {!roomCode ? (
         <>
           <div className="generator-hero">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <div style={{ fontSize: '2.5rem' }}>⚔️</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <div style={{ fontSize: '3.5rem', filter: 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.5))' }}>⚡</div>
               <div>
-                <h2>Quiz Challenge</h2>
-                <p>Face off against your peers in a high-stakes, real-time competitive arena.</p>
+                <h2 style={{ fontSize: '2.5rem', marginBottom: '10px' }}>Challenge Quiz</h2>
+                <p style={{ fontSize: '1.1rem', opacity: 0.8 }}>Join or host a real-time practice session with other students.</p>
               </div>
             </div>
           </div>
 
-          {error && <div className="error-message">{error}</div>}
+          {error && <div className="error-message" style={{ margin: '20px auto', maxWidth: '800px' }}>⚠️ {error}</div>}
 
-          <div className="form-grid generator-panel" style={{ border: '1px solid var(--battle-primary)', background: 'linear-gradient(180deg, #fff, #f0f7ff)' }}>
-            <div className="form-group">
+          <div className="form-grid generator-panel" style={{ 
+            border: '1px solid #e2e8f0', 
+            background: 'white',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
+            borderRadius: '24px',
+            padding: '40px'
+          }}>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
               <label>Your Name</label>
-              <input value={playerName} onChange={(e) => setPlayerName(e.target.value)} placeholder="Enter combatant name" />
+              <input value={playerName} onChange={(e) => setPlayerName(e.target.value)} placeholder="Enter your display name..." style={{ fontSize: '1.2rem', padding: '15px' }} />
             </div>
             <div className="form-group">
-              <label>Year</label>
+              <label>Academic Year</label>
               <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
                 {years.map((y) => <option key={y}>{y}</option>)}
               </select>
@@ -194,7 +215,7 @@ export function LiveQuiz() {
             <div className="form-group">
               <label>Subject</label>
               <select value={subject} onChange={(e) => setSubject(e.target.value)}>
-                {filteredSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {filteredSubjects.map((s) => <option key={s.id} value={s.id}>{s.name.replace(/_/g, ' ')}</option>)}
               </select>
             </div>
             <div className="form-group">
@@ -208,95 +229,106 @@ export function LiveQuiz() {
             <div className="form-group">
               <label>Time Limit (mins)</label>
               <input 
-                type="number" 
-                min="1" 
-                max="60" 
+                type="number" min="1" max="60" 
                 value={timeLimit} 
                 onChange={(e) => setTimeLimit(parseInt(e.target.value) || 1)} 
               />
             </div>
           </div>
 
-          <div className="battle-join-area" style={{ marginTop: '30px', textAlign: 'center' }}>
-            <div style={{ marginBottom: '15px', fontSize: '0.9rem', opacity: 0.6, fontWeight: 600 }}>OR JOIN AN EXISTING BATTLE</div>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+          <div style={{ marginTop: '40px', textAlign: 'center', background: 'white', padding: '40px', borderRadius: '32px', border: '1px solid #e2e8f0' }}>
+            <div style={{ marginBottom: '20px', fontSize: '0.85rem', color: '#64748b', fontWeight: 800, letterSpacing: '1px' }}>JOIN EXISTING ROOM</div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', maxWidth: '500px', margin: '0 auto' }}>
                 <input
-                value={codeInput}
-                onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-                placeholder="PROMO CODE / ROOM CODE"
-                className="minimal-code-input"
+                  value={codeInput}
+                  onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+                  placeholder="ROOM CODE"
+                  style={{ textAlign: 'center', fontSize: '1.2rem', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0', width: '100%' }}
                 />
-                <button className="btn-secondary" onClick={joinRoom} disabled={loading} style={{ padding: '0 30px' }}>
-                JOIN BATTLE
+                <button className="btn-secondary" onClick={joinRoom} disabled={loading} style={{ padding: '0 40px', fontSize: '1.1rem', borderRadius: '12px' }}>
+                  JOIN
                 </button>
             </div>
             
-            <div style={{ margin: '30px 0', height: '1px', background: 'linear-gradient(90deg, transparent, #dbe4ef, transparent)' }} />
+            <div style={{ margin: '40px 0', height: '1px', background: '#e2e8f0' }} />
             
-            <button className="btn-primary" onClick={createRoom} disabled={loading} style={{ background: 'var(--battle-primary)', padding: '16px 40px', fontSize: '1.1rem', borderRadius: '50px', boxShadow: '0 10px 20px rgba(59, 130, 246, 0.2)' }}>
-                🚀 Host New Battle Arena
+            <button className="btn-primary" onClick={createRoom} disabled={loading} style={{ background: '#0f172a', color: 'white', padding: '18px 60px', fontSize: '1.2rem', borderRadius: '16px', fontWeight: 700 }}>
+               Host New Room
             </button>
           </div>
         </>
       ) : (
-        <div className="battle-room">
-          <div className="battle-hud">
+        <div className="quiz-room-active" style={{ padding: '20px 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', background: '#0f172a', padding: '25px', borderRadius: '24px', color: 'white' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-              <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>BATTLE CODE</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--battle-primary)', letterSpacing: '4px' }}>{roomCode}</div>
-                <button 
-                  className="copy-btn"
-                  onClick={() => {
-                    navigator.clipboard.writeText(roomCode);
-                    alert('Battle code copied to clipboard!');
-                  }}
-                  title="Copy Battle Code"
-                >
-                  📋
-                </button>
-              </div>
+              <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 700 }}>ROOM CODE</div>
+              <div style={{ fontSize: '2.5rem', fontWeight: 900, letterSpacing: '4px' }}>{roomCode}</div>
+              <button 
+                onClick={() => { navigator.clipboard.writeText(roomCode); alert('Room code copied!'); }}
+                style={{ padding: '8px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+              >
+                📋
+              </button>
             </div>
 
             {timeLeft !== null && (
-              <div className={`timer-pill ${timeLeft < 60 ? 'pulse-warning' : ''}`}>
-                {timeLeft < 60 ? '⚠️ ' : '⏱️ '}
-                {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: timeLeft < 60 ? '#ef4444' : 'white' }}>
+                ⏱️ {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
               </div>
             )}
 
             <button 
               className="btn-secondary" 
               onClick={() => { setRoomCode(''); setState(null); setResult(null); }}
-              style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}
+              style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', color: '#ef4444', padding: '10px 20px', borderRadius: '12px' }}
             >
-              Exit Arena
+              Leave Room
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: '30px' }}>
             <div className="questions-container">
               {state?.questions.map((q, idx) => (
-                <div key={idx} className="glass-card" style={{ marginBottom: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                    <span style={{ fontWeight: 800, color: 'var(--battle-primary)' }}>QUESTION {idx + 1}</span>
-                    <span style={{ opacity: 0.6 }}>{q.question_type.replace('_', ' ')}</span>
+                <div key={idx} style={{ marginBottom: '25px', padding: '35px', background: 'white', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', borderBottom: '1px solid #f1f5f9', paddingBottom: '15px' }}>
+                    <span style={{ fontWeight: 800, color: '#3b82f6', fontSize: '1rem' }}>QUESTION {idx + 1}</span>
                   </div>
-                  <p style={{ fontSize: '1.1rem', marginBottom: '20px', lineHeight: 1.6 }}>{q.question_text}</p>
+                  <p style={{ fontSize: '1.25rem', marginBottom: '30px', lineHeight: 1.6, color: '#0f172a', fontWeight: 500 }}>{q.question_text}</p>
                   
                   {q.options ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                       {q.options.map((opt, i) => {
                         const letter = String.fromCharCode(65 + i);
                         const isSelected = answers[idx] === opt;
                         return (
                           <div 
                             key={i} 
-                            className={`battle-option ${isSelected ? 'selected' : ''}`}
+                            style={{ 
+                                padding: '18px',
+                                borderRadius: '16px',
+                                border: '2px solid',
+                                borderColor: isSelected ? '#3b82f6' : '#f1f5f9',
+                                background: isSelected ? '#eff6ff' : '#f8fafc',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '15px'
+                            }}
                             onClick={() => setAnswers(prev => ({ ...prev, [idx]: opt }))}
                           >
-                            <span style={{ fontWeight: 800, color: isSelected ? '#fff' : 'var(--battle-primary)' }}>{letter}</span>
-                            <span>{opt}</span>
+                            <span style={{ 
+                              fontWeight: 800, 
+                              color: isSelected ? 'white' : '#3b82f6',
+                              background: isSelected ? '#3b82f6' : 'white',
+                              width: '32px',
+                              height: '32px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '8px',
+                              border: isSelected ? 'none' : '1px solid #e2e8f0'
+                            }}>{letter}</span>
+                            <span style={{ fontSize: '1.1rem', color: '#1e293b' }}>{opt}</span>
                           </div>
                         );
                       })}
@@ -304,50 +336,62 @@ export function LiveQuiz() {
                   ) : (
                     <textarea
                       rows={4}
-                      className="glass-card"
-                      style={{ width: '100%', background: 'rgba(255,255,255,0.05)', color: '#fff', border: 'none', resize: 'none' }}
+                      style={{ width: '100%', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', fontSize: '1.1rem' }}
                       value={answers[idx] || ''}
                       onChange={(e) => setAnswers((prev) => ({ ...prev, [idx]: e.target.value }))}
-                      placeholder="Type your strategic response..."
+                      placeholder="Type your answer here..."
                     />
                   )}
                 </div>
               ))}
 
-              <div style={{ marginTop: '20px', textAlign: 'center' }}>
-                <button 
-                  className="btn-primary" 
-                  onClick={submitQuiz} 
-                  disabled={loading || !!result} 
-                  style={{ width: '100%', maxWidth: '300px', padding: '15px', fontSize: '1.2rem' }}
-                >
-                  {loading ? 'Submitting...' : 'FINISH BATTLE'}
-                </button>
+              <div style={{ margin: '40px 0', textAlign: 'center' }}>
+                {!result && (
+                  <button 
+                    onClick={submitQuiz} 
+                    disabled={loading} 
+                    style={{ width: '100%', maxWidth: '400px', padding: '20px', fontSize: '1.3rem', borderRadius: '16px', background: '#3b82f6', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer' }}
+                  >
+                    {loading ? 'Submitting...' : 'Submit Final Answers'}
+                  </button>
+                )}
                 {result && (
-                  <div className="glass-card" style={{ marginTop: '20px', border: '2px solid var(--ghana-green)', background: 'rgba(11, 122, 75, 0.1)' }}>
-                    <h2 style={{ color: 'var(--ghana-green)', marginBottom: '5px' }}>BATTLE COMPLETE</h2>
-                    <p style={{ fontSize: '1.5rem', fontWeight: 800 }}>Performance: {result.percentage}%</p>
+                  <div style={{ marginTop: '30px', border: '2px solid #10b981', background: '#ecfdf5', padding: '40px', borderRadius: '32px' }}>
+                    <h2 style={{ color: '#047857', marginBottom: '10px', fontSize: '2rem', fontWeight: 800 }}>Quiz Complete</h2>
+                    <p style={{ color: '#064e3b', opacity: 0.8, fontSize: '1.1rem' }}>Your final score is</p>
+                    <p style={{ fontSize: '5rem', fontWeight: 900, color: '#047857', margin: '10px 0' }}>{result.percentage}%</p>
                   </div>
                 )}
               </div>
             </div>
 
             <div className="sidebar">
-              <div className="glass-card">
-                <h4 style={{ marginBottom: '15px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>ARENA LEADERBOARD</h4>
-                <div className="leaderboard-advanced">
-                  {state?.leaderboard.map((row) => (
-                    <div key={row.player} className="leaderboard-row" style={{ 
-                      boxShadow: row.player.toLowerCase() === playerName.toLowerCase() ? '0 0 10px rgba(59, 130, 246, 0.3)' : 'none',
-                      border: row.player.toLowerCase() === playerName.toLowerCase() ? '1px solid var(--battle-primary)' : 'none'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {row.submitted ? '✅' : '⚔️'}
-                        <strong>{row.player}</strong>
+              <div style={{ position: 'sticky', top: '20px', background: 'white', padding: '30px', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
+                <h4 style={{ marginBottom: '20px', borderBottom: '1px solid #f1f5f9', paddingBottom: '15px', color: '#0f172a', fontSize: '1rem', fontWeight: 800 }}>LIVE LEADERBOARD</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {state?.leaderboard.map((row, idx) => {
+                    const isMe = row.player.toLowerCase() === playerName.toLowerCase();
+                    return (
+                      <div key={row.player} style={{ 
+                        padding: '15px',
+                        borderRadius: '12px',
+                        background: isMe ? '#eff6ff' : '#f8fafc',
+                        border: '1px solid',
+                        borderColor: isMe ? '#3b82f6' : '#e2e8f0',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '1.2rem' }}>{getRankBadge(idx)}</span>
+                          <strong style={{ fontSize: '1rem', color: '#1e293b' }}>{row.player}</strong>
+                        </div>
+                        <div style={{ fontWeight: 800, color: row.submitted ? '#10b981' : '#94a3b8' }}>
+                          {row.submitted ? `${row.percentage}%` : '...'}
+                        </div>
                       </div>
-                      <div style={{ fontWeight: 800, color: 'var(--battle-primary)' }}>{row.submitted ? `${row.percentage}%` : '---'}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>

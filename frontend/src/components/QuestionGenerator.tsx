@@ -8,6 +8,16 @@ interface Subject {
   year: string;
 }
 
+interface ExamHistoryEntry {
+  id: number;
+  exam_type: string;
+  subject: string;
+  score_obtained: number;
+  total_questions: number;
+  percentage: number;
+  created_at: string;
+}
+
 interface QuestionGeneratorProps {
   onSimulationToggle?: (active: boolean) => void;
   isSimulating?: boolean;
@@ -33,6 +43,7 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
   const [mockTimeLimit, setMockTimeLimit] = useState(30); // Default 30 minutes
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [timerActive, setTimerActive] = useState(false);
+  const [examHistory, setExamHistory] = useState<ExamHistoryEntry[]>([]);
   const availableYears = Array.from(new Set(subjects.map((s) => s.year))).sort();
   const filteredSubjects = subjects.filter((s) => s.year === selectedYear);
 
@@ -52,6 +63,12 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
           }
         }
         setError('');
+        
+        try {
+          const hist = await questionsAPI.getExamHistory();
+          setExamHistory(hist.filter((h: any) => h.exam_type === 'practice_generator'));
+        } catch(e) {}
+        
       } catch (error) {
         console.error('Error fetching subjects:', error);
         setError('Could not load subjects. Backend may still be loading or unavailable.');
@@ -126,6 +143,19 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
       const res = await questionsAPI.markPractice(items, 'simulation_user', subject);
       setExamResult(res);
       setShowAnswers(true);
+      
+      try {
+        await questionsAPI.saveExamHistory({
+          exam_type: 'practice_generator',
+          subject: subject,
+          score_obtained: res.score_obtained,
+          total_questions: res.total_questions,
+          percentage: res.percentage,
+          details_json: JSON.stringify(res.results)
+        });
+      } catch (historyErr) {
+        console.error('Failed to save history', historyErr);
+      }
     } catch (err) {
       console.error('Error marking practice:', err);
       alert('Error submitting exam for grading.');
@@ -477,6 +507,29 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
           questions.map((q, index) => renderQuestionCard(q, index, `Question ${index + 1}`))
         )}
       </div>
+
+      {!isSimulating && !!examHistory.length && (
+        <div style={{ marginTop: '40px', padding: '20px', background: '#f8fafc', borderRadius: '12px' }}>
+          <h3>📜 Past Practices History</h3>
+          <div style={{ display: 'grid', gap: '15px', marginTop: '15px' }}>
+            {examHistory.map(entry => (
+              <div key={entry.id} style={{ padding: '15px', background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <strong style={{ display: 'block', fontSize: '1.1rem' }}>{entry.subject.replace(/_/g, ' ').toUpperCase()}</strong>
+                  <span style={{ color: '#64748b' }}>{new Date(entry.created_at).toLocaleString()}</span>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: entry.percentage >= 50 ? '#10b981' : '#ef4444' }}>
+                    {entry.percentage}%
+                  </div>
+                  <span style={{ color: '#64748b' }}>{entry.score_obtained} / {entry.total_questions} pts</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

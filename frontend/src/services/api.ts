@@ -9,6 +9,20 @@ const apiClient = axios.create({
   },
 });
 
+let authToken = '';
+
+export function setAuthToken(token: string | null) {
+  authToken = token || '';
+}
+
+apiClient.interceptors.request.use((config) => {
+  if (authToken) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${authToken}`;
+  }
+  return config;
+});
+
 export interface UploadResponse {
   filename: string;
   file_type: string;
@@ -216,6 +230,16 @@ export const questionsAPI = {
     return response.data;
   },
 
+  saveExamHistory: async (payload: { exam_type: string; subject: string; score_obtained: number; total_questions: number; percentage: number; details_json: string }) => {
+    const response = await apiClient.post('/questions/history/exams', payload);
+    return response.data;
+  },
+
+  getExamHistory: async () => {
+    const response = await apiClient.get('/questions/history/exams');
+    return response.data;
+  },
+
   getResourceStatus: async (year: string, subject: string): Promise<ResourceStatusResponse> => {
     const response = await apiClient.get('/questions/resource-status', {
       params: { year, subject },
@@ -275,6 +299,35 @@ export const analysisAPI = {
 export interface TutorResponse {
   explanation: string;
   related_questions?: string[];
+  mode?: string;
+  extracted_text?: string;
+  study_tips?: string[];
+  steps?: string[];
+  confidence_note?: string;
+}
+
+export interface AuthUser {
+  id: number;
+  full_name: string;
+  email: string;
+  provider: string;
+  subscription_status: 'inactive' | 'active' | 'expired';
+  subscription_expires_at: string | null;
+  is_admin: boolean;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: AuthUser;
+}
+
+export interface AuthConfigResponse {
+  google_client_id: string;
+  google_enabled: boolean;
+  facebook_enabled: boolean;
+  tiktok_enabled: boolean;
+  passkey_enabled: boolean;
 }
 
 export const tutorAPI = {
@@ -284,6 +337,100 @@ export const tutorAPI = {
       subject,
       context,
     });
+    return response.data;
+  },
+
+  interpretImage: async (
+    imageBase64: string,
+    question?: string,
+    subject?: string,
+    context?: string,
+    filename?: string,
+    contentType?: string,
+  ): Promise<TutorResponse> => {
+    const response = await apiClient.post('/tutor/interpret-image', {
+      image_base64: imageBase64,
+      question: question || 'Interpret this image and help me solve it.',
+      subject,
+      context,
+      filename,
+      content_type: contentType,
+    });
+    return response.data;
+  },
+
+  getHistory: async (limit = 60) => {
+    const response = await apiClient.get('/tutor/history', { params: { limit } });
+    return response.data as {
+      messages: Array<{ id: number; role: string; content: string; subject: string | null; created_at: string }>;
+    };
+  },
+};
+
+export const authAPI = {
+  getConfig: async (): Promise<AuthConfigResponse> => {
+    const response = await apiClient.get('/auth/config');
+    return response.data;
+  },
+
+  signup: async (fullName: string, email: string, password: string): Promise<AuthResponse> => {
+    const response = await apiClient.post('/auth/signup', {
+      full_name: fullName,
+      email,
+      password,
+    });
+    return response.data;
+  },
+
+  login: async (email: string, password: string): Promise<AuthResponse> => {
+    const response = await apiClient.post('/auth/login', {
+      email,
+      password,
+    });
+    return response.data;
+  },
+
+  google: async (credential: string): Promise<AuthResponse> => {
+    const response = await apiClient.post('/auth/google', { credential });
+    return response.data;
+  },
+
+  me: async (): Promise<AuthUser> => {
+    const response = await apiClient.get('/auth/me');
+    return response.data;
+  },
+
+  verifyCode: async (code: string): Promise<AuthUser> => {
+    const response = await apiClient.post('/auth/verify-code', { code });
+    return response.data;
+  },
+
+  getSubscription: async () => {
+    const response = await apiClient.get('/auth/subscription');
+    return response.data as {
+      status: string;
+      expires_at: string | null;
+      days_remaining: number | null;
+      price_ghs: string;
+      subscription_months: number;
+    };
+  },
+
+  generateAdminCodes: async (
+    adminSecret: string,
+    quantity = 1,
+    durationMonths?: number
+  ) => {
+    const response = await apiClient.post('/auth/admin/generate-codes', {
+      admin_secret: adminSecret,
+      quantity,
+      duration_months: durationMonths,
+    });
+    return response.data as { codes: string[]; duration_months: number; price_ghs: string };
+  },
+
+  requestManualPayment: async (payload: { momo_name: string; momo_number: string; reference: string }) => {
+    const response = await apiClient.post('/auth/payment-request', payload);
     return response.data;
   },
 };
@@ -311,6 +458,131 @@ export const resourcesAPI = {
 
   getAvailableResources: async () => {
     const response = await apiClient.get('/resources/available-resources');
+    return response.data;
+  },
+};
+
+export interface AdminAnalytics {
+  total_users: number;
+  active_subscriptions: number;
+  expiring_subscriptions: number;
+  total_revenue_ghs: number;
+  total_codes_generated: number;
+  total_codes_used: number;
+  recent_activity: Array<{ full_name: string; activity_at: string; type: string }>;
+}
+
+export interface CouponGenerateResponse {
+  codes: string[];
+  duration_months: number;
+}
+
+export interface Competition {
+  id: number;
+  title: string;
+  description: string;
+  prize: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  created_at: string;
+  pdf_url?: string;
+  image_url?: string;
+  quiz_json?: string;
+}
+
+export interface LeaderboardEntry {
+  player_name: string;
+  total_points: number;
+  rank: number;
+  is_online: boolean;
+}
+
+export interface PaymentRequest {
+  id: number;
+  user_id: number;
+  full_name: string;
+  email: string;
+  momo_name: string;
+  momo_number: string;
+  reference: string;
+  status: 'pending' | 'confirmed' | 'rejected';
+  created_at: string;
+}
+
+export const adminAPI = {
+  login: async (username: string, password: string): Promise<AuthResponse> => {
+    const response = await apiClient.post('/admin/login', null, { params: { username, password } });
+    return response.data;
+  },
+
+  getAnalytics: async (): Promise<AdminAnalytics> => {
+    const response = await apiClient.get('/admin/analytics');
+    return response.data;
+  },
+
+  createCompetition: async (payload: { title: string; description: string; prize: string; start_date: string; end_date: string; quiz_json?: string; pdf_url?: string }) => {
+    const response = await apiClient.post('/admin/competitions', payload);
+    return response.data as number;
+  },
+
+  uploadCompetitionPDF: async (compId: number, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post(`/admin/competitions/${compId}/upload-pdf`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as { status: string; pdf_url: string };
+  },
+
+  uploadCompetitionImage: async (compId: number, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post(`/admin/competitions/${compId}/upload-image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data as { status: string; image_url: string };
+  },
+
+  getCouponInventory: async () => {
+    const response = await apiClient.get('/admin/coupons/inventory');
+    return response.data as Array<{ code: string; duration_months: number; created_at: string }>;
+  },
+
+  generateCoupons: async (payload: { quantity: number; duration_months?: number }) => {
+    const response = await apiClient.post('/admin/coupons/generate', payload);
+    return response.data as CouponGenerateResponse;
+  },
+
+  listCompetitions: async (): Promise<Competition[]> => {
+    const response = await apiClient.get('/admin/competitions');
+    return response.data;
+  },
+
+  registerForCompetition: async (compId: number) => {
+    const response = await apiClient.post(`/admin/competitions/${compId}/register`);
+    return response.data;
+  },
+
+  getLeaderboard: async (): Promise<LeaderboardEntry[]> => {
+    const response = await apiClient.get('/admin/leaderboard');
+    return response.data;
+  },
+
+  // setupAdmin removed
+
+  getPendingPayments: async (): Promise<PaymentRequest[]> => {
+    const response = await apiClient.get('/admin/payments/pending');
+    return response.data;
+  },
+
+  confirmPayment: async (requestId: number) => {
+    const response = await apiClient.post(`/admin/payments/${requestId}/confirm`);
+    return response.data;
+  },
+
+  rejectPayment: async (requestId: number) => {
+    const response = await apiClient.post(`/admin/payments/${requestId}/reject`);
     return response.data;
   },
 };

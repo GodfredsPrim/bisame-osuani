@@ -416,38 +416,46 @@ function App() {
             <div className="brand-mark">B</div>
             <div>
               <strong>BisaME</strong>
-              <span>Study companion for SHS learners</span>
+              <span>{activeTab === 'admin' ? 'Administrative control center' : 'Study companion for SHS learners'}</span>
             </div>
           </div>
 
-          <nav className="topbar__nav">
-            <button className={`topbar__nav-btn ${activeTab === 'study' ? 'active' : ''}`} onClick={() => setActiveTab('study')}>
-              <span className="nav-icon">🧠</span>Study with AI
-            </button>
-            <button className={`topbar__nav-btn ${activeTab === 'generator' ? 'active' : ''}`} onClick={() => openAuthGate('generator')}>
-              <span className="nav-icon">📝</span>Generate Questions
-            </button>
-            <button className={`topbar__nav-btn ${activeTab === 'live_quiz' ? 'active' : ''}`} onClick={() => openAuthGate('live_quiz')}>
-              <span className="nav-icon">⚡</span>Challenge Quiz
-            </button>
-            <button className={`topbar__nav-btn ${activeTab === 'competitions' ? 'active' : ''}`} onClick={() => openAuthGate('competitions')}>
-              <span className="nav-icon">📢</span>Announcements
-            </button>
-            <button className={`topbar__nav-btn ${activeTab === 'analysis' ? 'active' : ''}`} onClick={() => openAuthGate('analysis')}>
-              <span className="nav-icon">📊</span>Likely WASSCE Questions
-            </button>
-            <button className={`topbar__nav-btn ${activeTab === 'resources' ? 'active' : ''}`} onClick={() => openAuthGate('resources')}>
-              <span className="nav-icon">📚</span>Library
-            </button>
-            <button className={`topbar__nav-btn ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => openAuthGate('leaderboard')}>
-              <span className="nav-icon">🏆</span>Leaderboard
-            </button>
-            {account?.is_admin && (
-              <button className={`topbar__nav-btn ${activeTab === 'admin' ? 'active' : ''}`} onClick={() => setActiveTab('admin')}>
-                <span className="nav-icon">🛡️</span>Administration
+          {!(account?.is_admin && activeTab === 'admin') ? (
+            <nav className="topbar__nav">
+              <button className={`topbar__nav-btn ${activeTab === 'study' ? 'active' : ''}`} onClick={() => setActiveTab('study')}>
+                <span className="nav-icon">🧠</span>Study with AI
               </button>
-            )}
-          </nav>
+              <button className={`topbar__nav-btn ${activeTab === 'generator' ? 'active' : ''}`} onClick={() => openAuthGate('generator')}>
+                <span className="nav-icon">📝</span>Generate Questions
+              </button>
+              <button className={`topbar__nav-btn ${activeTab === 'live_quiz' ? 'active' : ''}`} onClick={() => openAuthGate('live_quiz')}>
+                <span className="nav-icon">⚡</span>Challenge Quiz
+              </button>
+              <button className={`topbar__nav-btn ${activeTab === 'competitions' ? 'active' : ''}`} onClick={() => openAuthGate('competitions')}>
+                <span className="nav-icon">📢</span>Announcements
+              </button>
+              <button className={`topbar__nav-btn ${activeTab === 'analysis' ? 'active' : ''}`} onClick={() => openAuthGate('analysis')}>
+                <span className="nav-icon">📊</span>Likely WASSCE Questions
+              </button>
+              <button className={`topbar__nav-btn ${activeTab === 'resources' ? 'active' : ''}`} onClick={() => openAuthGate('resources')}>
+                <span className="nav-icon">📚</span>Library
+              </button>
+              <button className={`topbar__nav-btn ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => openAuthGate('leaderboard')}>
+                <span className="nav-icon">🏆</span>Leaderboard
+              </button>
+              {account?.is_admin && (
+                <button className="topbar__nav-btn" onClick={() => setActiveTab('admin')}>
+                  <span className="nav-icon">🛡️</span>Administration
+                </button>
+              )}
+            </nav>
+          ) : (
+            <nav className="topbar__nav">
+              <button className="topbar__nav-btn active" onClick={() => setActiveTab('admin')}>
+                <span className="nav-icon">🛡️</span>Administrative Dashboard
+              </button>
+            </nav>
+          )}
 
           <div className="topbar__account">
             {account ? (

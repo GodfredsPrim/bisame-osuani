@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     # API Configuration
     OPENAI_API_KEY: str = ""
     OPENAI_BASE_URL: str = ""
-    OPENAI_MODEL: str = "gpt-3.5-turbo"  # Use gpt-3.5-turbo, gpt-4, or gpt-4o (gpt-4-turbo-preview is deprecated)
+    OPENAI_MODEL: str = "gpt-4o-mini"  # Vision-capable default for Study with AI OCR and tutoring
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_MODEL: str = "deepseek-chat"
     LLM_FALLBACK_ENABLED: bool = True
@@ -20,6 +20,19 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = f"sqlite:///{(BACKEND_DIR / 'gh_shs.db').as_posix()}"
+    AUTH_DB_PATH: Path = BACKEND_DIR / "auth.db"
+
+    # Authentication
+    AUTH_SECRET_KEY: str = "change-this-auth-secret"
+    ACCESS_TOKEN_EXPIRE_HOURS: int = 168
+    GOOGLE_CLIENT_ID: str = ""
+
+    # Admin Credentials
+    ADMIN_USERNAME: str = "bisameadmin"
+    ADMIN_PASSWORD: str = "bisame-admin-2026"
+    ADMIN_SECRET: str = "change-this-admin-secret"
+    SUBSCRIPTION_PRICE_GHS: str = "10"
+    SUBSCRIPTION_MONTHS: int = 3
 
     # CORS
     CORS_ORIGINS: list = ["http://localhost:5173", "http://localhost:3000"]

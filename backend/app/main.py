@@ -1,5 +1,4 @@
-from fastapi import FastAPI
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -10,12 +9,13 @@ from pathlib import Path
 import asyncio
 
 from app.config import settings
-from app.routes import questions, uploads, analysis, resources, tutor
+from app.routes import questions, uploads, analysis, resources, tutor, auth, admin
 from app.services.batch_loader import BatchLoader
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 FRONTEND_DIST_DIR = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 FRONTEND_INDEX_FILE = FRONTEND_DIST_DIR / "index.html"
 
@@ -91,11 +91,19 @@ app.include_router(questions.router, prefix="/api/questions", tags=["questions"]
 app.include_router(analysis.router, prefix="/api/analysis", tags=["analysis"])
 app.include_router(resources.router, prefix="/api/resources", tags=["resources"])
 app.include_router(tutor.router, prefix="/api/tutor", tags=["tutor"])
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
+# Serve static files for frontend assets
 if FRONTEND_DIST_DIR.exists():
     assets_dir = FRONTEND_DIST_DIR / "assets"
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+# Serve uploaded files (competition PDFs etc.)
+uploads_base_dir = Path(__file__).resolve().parents[1] / "uploads"
+uploads_base_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_base_dir)), name="uploads")
 
 
 @app.get("/", include_in_schema=False)
@@ -124,7 +132,6 @@ async def get_document_status():
         "status": "not_loaded",
         "message": "Documents not loaded. Auto-loading may be disabled or in progress."
     }
-
 
 @app.get("/{full_path:path}", include_in_schema=False)
 async def spa_fallback(full_path: str):
