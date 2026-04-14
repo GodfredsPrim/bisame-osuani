@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   adminAPI,
-  setAuthToken,
   type AdminAnalytics,
   type Competition,
   type PaymentRequest,
