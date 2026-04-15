@@ -127,6 +127,54 @@ export interface LiveQuizStateResponse {
   }>;
 }
 
+export interface AdminAnalytics {
+  total_users: number;
+  active_subscriptions: number;
+  expiring_subscriptions: number;
+  total_revenue_ghs: number;
+  total_codes_generated: number;
+  total_codes_used: number;
+  recent_activity: Array<{ full_name: string; activity_at: string; type: string }>;
+}
+
+export interface CouponGenerateResponse {
+  codes: string[];
+  duration_months: number;
+}
+
+export interface Competition {
+  id: number;
+  title: string;
+  description: string;
+  prize: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  created_at: string;
+  pdf_url?: string;
+  image_url?: string;
+  quiz_json?: string;
+}
+
+export interface LeaderboardEntry {
+  player_name: string;
+  total_points: number;
+  rank: number;
+  is_online: boolean;
+}
+
+export interface PaymentRequest {
+  id: number;
+  user_id: number;
+  full_name: string;
+  email: string;
+  momo_name: string;
+  momo_number: string;
+  reference: string;
+  status: 'pending' | 'confirmed' | 'rejected';
+  created_at: string;
+}
+
 export const uploadAPI = {
   uploadPDF: async (file: File, fileType: string, subject: string): Promise<UploadResponse> => {
     const formData = new FormData();

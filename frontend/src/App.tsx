@@ -10,7 +10,7 @@ import { GlobalLeaderboard } from './components/Leaderboard'
 import { CompetitionPortal } from './components/CompetitionPortal'
 import { authAPI, adminAPI, questionsAPI, setAuthToken, type AuthConfigResponse, type AuthUser } from './services/api'
 
-type AppTab = 'study' | 'generator' | 'live_quiz' | 'competitions' | 'analysis' | 'resources' | 'leaderboard' | 'admin'
+type AppTab = 'study' | 'generator' | 'live_quiz' | 'competitions' | 'analysis' | 'resources' | 'leaderboard' | 'admin' | 'history'
 type AuthTarget = AppTab
 type AuthMode = 'login' | 'signup'
 type AuthStep = 'auth' | 'verify_code' | 'active'
@@ -59,6 +59,11 @@ const TAB_COPY: Record<AuthTarget, { label: string; reason: string; icon: string
     label: 'Administration',
     icon: '🛡️',
     reason: 'Manage system settings and user accounts.',
+  },
+  history: {
+    label: 'History',
+    icon: '🕒',
+    reason: 'Review your past generated questions and session analysis.',
   },
 }
 
