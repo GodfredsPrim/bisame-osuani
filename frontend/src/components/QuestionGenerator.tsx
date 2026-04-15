@@ -489,7 +489,9 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
             </span>
           )}
         </div>
-      ) : isPrintAnswerSheet && (
+      )}
+
+      {isPrintAnswerSheet && (
          <div className="print-header" style={{ textAlign: 'center', padding: '20px', borderBottom: '2px solid #000', marginBottom: '30px' }}>
            <h1 style={{ textTransform: 'uppercase' }}>OFFICIAL ANSWER SHEET</h1>
            <h2>{filteredSubjects.find(s => s.id === subject)?.name.toUpperCase()}</h2>
