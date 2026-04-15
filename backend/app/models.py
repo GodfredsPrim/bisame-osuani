@@ -241,6 +241,7 @@ class TutorRequest(BaseModel):
     question: str
     subject: Optional[str] = None
     context: Optional[str] = None
+    is_main_concept_only: bool = False
 
 
 class TutorImageRequest(BaseModel):
@@ -250,6 +251,7 @@ class TutorImageRequest(BaseModel):
     filename: Optional[str] = None
     content_type: Optional[str] = None
     image_base64: str
+    is_main_concept_only: bool = False
 
 
 class TutorResponse(BaseModel):

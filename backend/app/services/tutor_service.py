@@ -89,10 +89,28 @@ class TutorService:
         textbook_context: str,
         context: Optional[str],
         is_image_request: bool = False,
+        is_main_concept_only: bool = False,
     ) -> tuple[str, str]:
         is_math_like = self._is_math_like_request(question, subject_id, context)
         mode = "math_step_by_step" if is_math_like else "concept_coach"
         request_kind = "image-based study help" if is_image_request else "text-based study help"
+
+        if is_main_concept_only:
+            prompt = f"""
+You are BisaME's Ghana SHS Study Coach. The student wants only the core concept.
+
+Your job:
+1. Provide a single, extremely concise explanation (max 3 sentences) of the main concept in the student's question.
+2. Do NOT provide examples, steps, suggestions, tips, or conversational filler.
+3. Use Ghana SHS / WASSCE-friendly language.
+
+Subject: {subject_label}
+Additional student context: {context or 'None'}
+
+Helpful textbook context:
+{textbook_context}
+"""
+            return prompt.strip(), "core_concept"
 
         if is_math_like:
             prompt = f"""
@@ -193,7 +211,13 @@ Helpful textbook context:
             confidence_note=confidence_note,
         )
 
-    async def get_explanation(self, question: str, subject: str, context: Optional[str] = None) -> TutorResponse:
+    async def get_explanation(
+        self, 
+        question: str, 
+        subject: str, 
+        context: Optional[str] = None,
+        is_main_concept_only: bool = False
+    ) -> TutorResponse:
         """Get a subject-aware explanation for a student question."""
         try:
             llm = self._get_llm()
@@ -210,6 +234,7 @@ Helpful textbook context:
                 subject_id=subject_id,
                 textbook_context=textbook_context,
                 context=context,
+                is_main_concept_only=is_main_concept_only
             )
             user_msg = f"Question: {question}"
 
@@ -239,6 +264,7 @@ Helpful textbook context:
         context: Optional[str] = None,
         filename: Optional[str] = None,
         content_type: Optional[str] = None,
+        is_main_concept_only: bool = False,
     ) -> TutorResponse:
         """Interpret a study image and explain it with OCR-like reasoning."""
         try:
@@ -256,6 +282,7 @@ Helpful textbook context:
                 textbook_context=textbook_context,
                 context=context,
                 is_image_request=True,
+                is_main_concept_only=is_main_concept_only
             )
 
             mime_type = content_type or "image/png"

@@ -476,6 +476,9 @@ function App() {
               <button className={`topbar__nav-btn ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => openAuthGate('leaderboard')}>
                 <span className="nav-icon">🏆</span>Leaderboard
               </button>
+              <button className={`topbar__nav-btn ${activeTab === 'history' ? 'active' : ''}`} onClick={() => openAuthGate('history')}>
+                <span className="nav-icon">🕒</span>History
+              </button>
               {account?.is_admin && (
                 <button className="topbar__nav-btn" onClick={() => setActiveTab('admin')}>
                   <span className="nav-icon">🛡️</span>Administration
@@ -539,6 +542,7 @@ function App() {
         {activeTab === 'analysis' && <AnalysisDashboard />}
         {activeTab === 'resources' && <ResourceFetcher />}
         {activeTab === 'leaderboard' && <GlobalLeaderboard />}
+        {activeTab === 'history' && <QuestionGenerator showHistoryOnly={true} />}
         {activeTab === 'admin' && <AdminDashboard />}
       </main>
 

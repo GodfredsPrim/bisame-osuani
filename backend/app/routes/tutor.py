@@ -55,6 +55,7 @@ async def ask_tutor(
             request.question,
             subject=request.subject,
             context=request.context,
+            is_main_concept_only=request.is_main_concept_only,
         )
 
         # Persist to chat history for authenticated users
@@ -101,6 +102,7 @@ async def interpret_study_image(
             context=request.context,
             filename=request.filename,
             content_type=request.content_type,
+            is_main_concept_only=request.is_main_concept_only,
         )
 
         # Persist to chat history

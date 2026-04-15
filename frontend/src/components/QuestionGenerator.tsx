@@ -16,14 +16,16 @@ interface ExamHistoryEntry {
   total_questions: number;
   percentage: number;
   created_at: string;
+  details_json?: string;
 }
 
 interface QuestionGeneratorProps {
   onSimulationToggle?: (active: boolean) => void;
   isSimulating?: boolean;
+  showHistoryOnly?: boolean;
 }
 
-export function QuestionGenerator({ onSimulationToggle, isSimulating }: QuestionGeneratorProps) {
+export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistoryOnly = false }: QuestionGeneratorProps) {
   const [subject, setSubject] = useState('mathematics');
   const [selectedYear, setSelectedYear] = useState('Year 1');
   const [questionType, setQuestionType] = useState('multiple_choice');
@@ -32,6 +34,7 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [showAnswers, setShowAnswers] = useState(false);
+  const [isPrintAnswerSheet, setIsPrintAnswerSheet] = useState(false);
   const [generationTime, setGenerationTime] = useState(0);
   const [generationMeta, setGenerationMeta] = useState<GeneratedQuestions | null>(null);
   const [studentAnswers, setStudentAnswers] = useState<Record<number, string>>({});
@@ -40,11 +43,13 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
   const [error, setError] = useState('');
-  const [mockTimeLimit, setMockTimeLimit] = useState(30); // Default 30 minutes
+  const [mockTimeLimit, setMockTimeLimit] = useState(30); 
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [timerActive, setTimerActive] = useState(false);
   const [examHistory, setExamHistory] = useState<ExamHistoryEntry[]>([]);
+
   const availableYears = Array.from(new Set(subjects.map((s) => s.year))).sort();
+  // Ensure Year 3 is included if it exists
   const filteredSubjects = subjects.filter((s) => s.year === selectedYear);
 
   useEffect(() => {
@@ -54,6 +59,7 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
         const data = await questionsAPI.getSubjects();
         const subjectList = data.subjects || [];
         setSubjects(Array.isArray(subjectList) ? subjectList : []);
+        
         if (Array.isArray(subjectList) && subjectList.length > 0) {
           const firstYear = subjectList.find((s: Subject) => s.year === 'Year 1')?.year || subjectList[0].year;
           setSelectedYear(firstYear);
@@ -66,7 +72,7 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
         
         try {
           const hist = await questionsAPI.getExamHistory();
-          setExamHistory(hist.filter((h: any) => h.exam_type === 'practice_generator'));
+          setExamHistory(hist.filter((h: any) => h.exam_type === 'practice_generator').reverse());
         } catch(e) {}
         
       } catch (error) {
@@ -74,7 +80,7 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
         setError('Could not load subjects. Backend may still be loading or unavailable.');
         setTimeout(() => {
           fetchSubjects();
-        }, 2000);
+        }, 5000);
       } finally {
         setLoadingSubjects(false);
       }
@@ -98,6 +104,10 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
 
     setLoading(true);
     setError('');
+    setQuestions([]);
+    setExamResult(null);
+    setStudentAnswers({});
+
     try {
       const result = await questionsAPI.generateQuestions(
         subject,
@@ -110,18 +120,33 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
       setGenerationTime(result.generation_time);
       setGenerationMeta(result);
       setShowAnswers(false);
+      setIsPrintAnswerSheet(false);
     } catch (error) {
       console.error('Error generating questions:', error);
       const backendMessage = axios.isAxiosError(error)
         ? (error.response?.data?.detail || error.message)
         : 'Failed to generate questions. Please try again.';
       setError(backendMessage);
-      alert(`Failed to generate questions: ${backendMessage}`);
     } finally {
       setLoading(false);
     }
   };
 
+  const startSimulation = async () => {
+    if (questions.length === 0) {
+      await handleGenerate();
+    }
+    if (onSimulationToggle) {
+      onSimulationToggle(true);
+    }
+    setTimeLeft(mockTimeLimit * 60);
+    setTimerActive(true);
+    
+    // Trigger fullscreen
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => console.warn(err));
+    }
+  };
 
   const handleStudentAnswerChange = (index: number, val: string) => {
     setStudentAnswers(prev => ({ ...prev, [index]: val }));
@@ -130,7 +155,6 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
   const submitExamGrading = async () => {
     setIsSubmitting(true);
     try {
-      // Map global index for grading
       const items = questions.map((q, i) => ({
         question_text: q.question_text,
         question_type: q.question_type,
@@ -153,9 +177,10 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
           percentage: res.percentage,
           details_json: JSON.stringify(res.results)
         });
-      } catch (historyErr) {
-        console.error('Failed to save history', historyErr);
-      }
+        // Refresh local history
+        const hist = await questionsAPI.getExamHistory();
+        setExamHistory(hist.filter((h: any) => h.exam_type === 'practice_generator').reverse());
+      } catch(e) {}
     } catch (err) {
       console.error('Error marking practice:', err);
       alert('Error submitting exam for grading.');
@@ -163,7 +188,7 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
       setIsSubmitting(false);
       setTimerActive(false);
       setTimeLeft(null);
-      stopSimulation(); // Exit simulation mode to view results
+      stopSimulation(); 
     }
   };
 
@@ -173,28 +198,22 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
     if (onSimulationToggle) {
       onSimulationToggle(false);
     }
-    
-    // Exit fullscreen if active
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(err => console.warn(err));
     }
   };
 
-  // Anti-cheat fullscreen enforcement
   useEffect(() => {
     const handleFullscreenChange = () => {
-      // If we are simulating but suddenly lose fullscreen, auto-submit to penalize cheating
       if (isSimulating && !document.fullscreenElement && !examResult) {
         alert('Restricted mode violation: Fullscreen exited. Auto-submitting exam now.');
         submitExamGrading();
       }
     };
-    
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, [isSimulating, studentAnswers, examResult]);
 
-  // Handle countdown timer
   useEffect(() => {
     let interval: any;
     if (timerActive && timeLeft !== null && timeLeft > 0) {
@@ -214,70 +233,116 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
     return () => clearInterval(interval);
   }, [timerActive, timeLeft]);
 
-  // Split questions into sections for standard/full exam display
-  const mcqQuestions = questions.filter(q => q.question_type === 'multiple_choice');
-  const theoryQuestions = questions.filter(q => q.question_type === 'essay' || q.question_type === 'short_answer');
-  const isStandardExam = false;
-
-  const renderQuestionCard = (q: Question, globalIndex: number, labelPrefix: string) => (
-    <div key={`q-${globalIndex}`} className="question-card" style={{ padding: '20px', border: '1px solid #eaeaea', borderRadius: '8px', marginBottom: '15px' }}>
-      <h4>{labelPrefix}</h4>
-      <p style={{ whiteSpace: 'pre-wrap' }}><strong>{q.question_text}</strong></p>
-
-      {isSimulating ? (
-        <div className="interactive-answer">
+  const renderQuestionCard = (q: Question, globalIndex: number, labelPrefix: string) => {
+    if (isPrintAnswerSheet) {
+      // Render as a blank answer sheet item for printing
+      return (
+        <div key={`ans-${globalIndex}`} className="answer-sheet-item" style={{ marginBottom: '1rem', borderBottom: '1px solid #eee', paddingBottom: '0.5rem' }}>
+          <strong>{labelPrefix}</strong>
           {q.options && q.options.length > 0 ? (
-            <div className="options" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '15px' }}>
-              {q.options.map((opt, i) => {
-                const letter = String.fromCharCode(65 + i);
-                return (
-                  <label key={i} className="option" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '10px', background: studentAnswers[globalIndex] === letter ? '#e6f7ff' : '#f9f9f9', borderRadius: '6px' }}>
-                    <input 
-                      type="radio" 
-                      name={`question-${globalIndex}`} 
-                      value={letter}
-                      checked={studentAnswers[globalIndex] === letter}
-                      onChange={(e) => handleStudentAnswerChange(globalIndex, e.target.value)}
-                    />
-                    <span>{letter}. {opt}</span>
-                  </label>
-                );
-              })}
+            <div style={{ display: 'flex', gap: '15px', marginTop: '5px' }}>
+              {q.options.map((_, i) => (
+                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ width: '18px', height: '18px', border: '1px solid #000', borderRadius: '50%' }}></div>
+                  {String.fromCharCode(65+i)}
+                </span>
+              ))}
             </div>
           ) : (
-            <textarea
-              placeholder="Type your detailed answer here..."
-              rows={6}
-              style={{ width: '100%', marginTop: '15px', padding: '12px', border: '1px solid #ccc', borderRadius: '6px', fontFamily: 'inherit' }}
-              value={studentAnswers[globalIndex] || ''}
-              onChange={(e) => handleStudentAnswerChange(globalIndex, e.target.value)}
-            />
+            <div style={{ height: '120px', border: '1px dashed #ccc', marginTop: '8px', borderRadius: '4px' }}></div>
           )}
         </div>
-      ) : (
-        q.options && (
-          <div className="options" style={{ marginTop: '15px' }}>
-            {q.options.map((opt, i) => (
-              <p key={i} className="option">{String.fromCharCode(65 + i)}. {opt}</p>
-            ))}
-          </div>
-        )
-      )}
+      );
+    }
 
-      {showAnswers && (
-        <div className="answer-section" style={{ marginTop: '20px', padding: '15px', background: '#f0fdf4', borderRadius: '6px', borderLeft: '4px solid #10b981' }}>
-          {examResult && examResult.results[globalIndex] && (
-            <div style={{ marginBottom: '10px', padding: '8px', background: examResult.results[globalIndex].is_correct ? '#d1fae5' : '#fee2e2', borderRadius: '4px' }}>
-              <strong>Score:</strong> {examResult.results[globalIndex].score * 100}% | <strong>Feedback:</strong> {examResult.results[globalIndex].feedback}
+    return (
+      <div key={`q-${globalIndex}`} className="question-card" style={{ padding: '20px', border: '1px solid #eaeaea', borderRadius: '8px', marginBottom: '15px' }}>
+        <h4>{labelPrefix}</h4>
+        <p style={{ whiteSpace: 'pre-wrap' }}><strong>{q.question_text}</strong></p>
+
+        {isSimulating ? (
+          <div className="interactive-answer">
+            {q.options && q.options.length > 0 ? (
+              <div className="options" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '15px' }}>
+                {q.options.map((opt, i) => {
+                  const letter = String.fromCharCode(65 + i);
+                  return (
+                    <label key={i} className="option" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '10px', background: studentAnswers[globalIndex] === letter ? '#e6f7ff' : '#f9f9f9', borderRadius: '6px' }}>
+                      <input 
+                        type="radio" 
+                        name={`question-${globalIndex}`} 
+                        value={letter}
+                        checked={studentAnswers[globalIndex] === letter}
+                        onChange={(e) => handleStudentAnswerChange(globalIndex, e.target.value)}
+                      />
+                      <span>{letter}. {opt}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            ) : (
+              <textarea
+                placeholder="Type your detailed answer here..."
+                rows={6}
+                style={{ width: '100%', marginTop: '15px', padding: '12px', border: '1px solid #cad7e6', borderRadius: '10px', fontFamily: 'inherit', fontSize: '1rem' }}
+                value={studentAnswers[globalIndex] || ''}
+                onChange={(e) => handleStudentAnswerChange(globalIndex, e.target.value)}
+              />
+            )}
+          </div>
+        ) : (
+          q.options && (
+            <div className="options" style={{ marginTop: '15px' }}>
+              {q.options.map((opt, i) => (
+                <p key={i} className="option">{String.fromCharCode(65 + i)}. {opt}</p>
+              ))}
             </div>
-          )}
-          <p><strong>Expected Answer/Rubric:</strong> {q.correct_answer || 'See explanation'}</p>
-          <p><strong>Explanation:</strong> {q.explanation}</p>
-          <p><small style={{ color: '#666' }}>Difficulty: {q.difficulty_level} | Confidence: {(q.pattern_confidence * 100).toFixed(0)}%</small></p>
+          )
+        )}
+
+        {showAnswers && (
+          <div className="answer-section" style={{ marginTop: '20px', padding: '15px', background: '#f0fdf4', borderRadius: '6px', borderLeft: '4px solid #10b981' }}>
+            {examResult && examResult.results[globalIndex] && (
+              <div style={{ marginBottom: '10px', padding: '8px', background: examResult.results[globalIndex].is_correct ? '#d1fae5' : '#fee2e2', borderRadius: '4px' }}>
+                <strong>Score:</strong> {examResult.results[globalIndex].score * 100}% | <strong>Feedback:</strong> {examResult.results[globalIndex].feedback}
+              </div>
+            )}
+            <p><strong>Expected Answer/Rubric:</strong> {q.correct_answer || 'See explanation'}</p>
+            <p><strong>Explanation:</strong> {q.explanation}</p>
+            <p><small style={{ color: '#666' }}>Difficulty: {q.difficulty_level} | Confidence: {(q.pattern_confidence * 100).toFixed(0)}%</small></p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderHistory = () => (
+    <div style={{ marginTop: showHistoryOnly ? '0' : '40px', padding: '20px', background: '#f8fafc', borderRadius: '12px' }}>
+      <h3>📜 Past Practices History</h3>
+      {examHistory.length === 0 ? (
+        <p style={{ marginTop: '10px', color: '#64748b' }}>No practice history found yet.</p>
+      ) : (
+        <div style={{ display: 'grid', gap: '15px', marginTop: '15px' }}>
+          {examHistory.map(entry => (
+            <div key={entry.id} className="history-item-card" style={{ padding: '15px', background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <strong style={{ display: 'block', fontSize: '1.1rem' }}>{entry.subject.replace(/_/g, ' ').toUpperCase()}</strong>
+                <span style={{ color: '#64748b' }}>{new Date(entry.created_at).toLocaleString()}</span>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: entry.percentage >= 50 ? '#10b981' : '#ef4444' }}>
+                  {entry.percentage}%
+                </div>
+                <span style={{ color: '#64748b' }}>{entry.score_obtained} / {entry.total_questions} pts</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
   );
+
+  if (showHistoryOnly) return renderHistory();
 
   return (
     <div className={`generator-section ${isSimulating ? 'simulating' : ''}`}>
@@ -286,26 +351,13 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
         <p>
           {isSimulating
             ? 'You are in exam mode. Navigation is locked. Complete the session and press "Submit & Finish" to exit.'
-            : 'Generate realistic practice questions. Select a type and difficulty to build your targeted practice set.'
+            : 'Generate realistic practice questions using textbooks and past questions. Mixed Resource Mode available for Year 3.'
           }
         </p>
       </div>
 
-      {error && (
-        <div className="error-message" style={{
-          padding: '12px',
-          marginBottom: '16px',
-          backgroundColor: '#fee',
-          border: '1px solid #fcc',
-          borderRadius: '4px',
-          color: '#c00',
-          fontSize: '14px'
-        }}>
-          {error}
-        </div>
-      )}
+      {error && <div className="error-message">{error}</div>}
 
-      {/* Restricted mode: show only a top bar with subject + exit button */}
       {isSimulating ? (
         <div className="sim-exit-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '15px', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', marginBottom: '20px' }}>
           <span><strong>📋 Subject:</strong> {filteredSubjects.find(s => s.id === subject)?.name || subject}</span>
@@ -315,221 +367,143 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating }: Question
               fontWeight: 'bold', 
               color: timeLeft < 60 ? '#dc2626' : '#374151',
               padding: '4px 12px',
-              borderRadius: '4px',
+              borderRadius: '999px',
               backgroundColor: timeLeft < 60 ? '#fee2e2' : '#f3f4f6',
-              border: timeLeft < 60 ? '1px solid #dc2626' : '1px solid #d1d5db',
+              border: '1px solid',
+              borderColor: timeLeft < 60 ? '#dc2626' : '#d1d5db',
               animation: timeLeft < 60 ? 'pulse 1.5s infinite' : 'none'
             }}>
-              ⏱️ Time Left: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+              ⏱️ {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
             </span>
           )}
-          <button onClick={submitExamGrading} disabled={isSubmitting} className="btn-secondary" style={{ background: '#10b981', color: 'white', border: 'none' }}>
-            {isSubmitting ? 'Grading...' : '✅ Submit & Finish Exam'}
+          <button onClick={submitExamGrading} disabled={isSubmitting} className="btn-primary">
+            {isSubmitting ? 'Grading...' : '✅ Submit Exam'}
           </button>
         </div>
       ) : (
         <>
           {examResult && (
-            <div className="exam-results-card" style={{ background: 'linear-gradient(to right, #1e3c72, #2a5298)', color: 'white', padding: '25px', borderRadius: '12px', marginBottom: '25px', textAlign: 'center' }}>
+            <div className="exam-results-card" style={{ background: 'linear-gradient(to right, #10253d, #1a3a5e)', color: 'white', padding: '25px', borderRadius: '12px', marginBottom: '25px', textAlign: 'center', boxShadow: 'var(--shadow-3d)' }}>
               <h2>Simulation Complete</h2>
-              <h1 style={{ fontSize: '3rem', margin: '15px 0' }}>{examResult.percentage.toFixed(1)}%</h1>
+              <h1 style={{ fontSize: '3.5rem', margin: '10px 0', fontFamily: 'Sora, sans-serif' }}>{examResult.percentage.toFixed(0)}%</h1>
               <p>You scored {examResult.score_obtained} out of {examResult.total_questions}</p>
+              <button 
+                onClick={() => {setQuestions([]); setExamResult(null);}} 
+                style={{marginTop: '15px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer'}}
+              >
+                Start New Session
+              </button>
             </div>
           )}
           <div className="form-grid generator-panel">
             <div className="form-group">
-              <label htmlFor="year">Year:</label>
+              <label htmlFor="year">Select Year / Format:</label>
               <select
                 id="year"
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
                 disabled={loadingSubjects || availableYears.length === 0}
               >
-                {availableYears.length === 0 ? (
-                  <option>Loading years...</option>
-                ) : (
-                  availableYears.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))
-                )}
+                {availableYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year === 'Year 3' ? 'Year 3 (Mixed Resources)' : year}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div className="form-group">
-              <label htmlFor="subject">Subject:</label>
+              <label htmlFor="subject">Choose Subject:</label>
               <select
                 id="subject"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 disabled={loadingSubjects}
-                style={{opacity: loadingSubjects ? 0.6 : 1}}
               >
-                {loadingSubjects ? (
-                  <option>Loading subjects...</option>
-                ) : filteredSubjects.length === 0 ? (
-                  <option>No subjects available</option>
-                ) : (
-                  filteredSubjects.map((subj) => (
-                    <option key={subj.id} value={subj.id}>
-                      {subj.name}
-                    </option>
-                  ))
-                )}
+                {filteredSubjects.map((subj) => (
+                  <option key={subj.id} value={subj.id}>{subj.name}</option>
+                ))}
               </select>
             </div>
 
             <div className="form-group">
-              <label htmlFor="qType">Question Type:</label>
-              <select
-                id="qType"
-                value={questionType}
-                onChange={(e) => setQuestionType(e.target.value)}
-              >
+              <label htmlFor="qType">Format:</label>
+              <select id="qType" value={questionType} onChange={(e) => setQuestionType(e.target.value)}>
                 <option value="multiple_choice">Multiple Choice</option>
-                <option value="short_answer">Short Answer</option>
-                <option value="essay">Essay</option>
-                <option value="true_false">True/False</option>
+                <option value="essay">Structured Essay</option>
+                <option value="standard">Full WASSCE Mock (46 Qs)</option>
               </select>
             </div>
 
             <div className="form-group">
-              <label htmlFor="numQ">Number of Questions:</label>
-              <input
-                id="numQ"
-                type="number"
-                min="1"
-                max="50"
-                value={numQuestions}
-                onChange={(e) => setNumQuestions(parseInt(e.target.value))}
-              />
+              <label htmlFor="numQ">Quantity:</label>
+              <input id="numQ" type="number" min="1" max="50" value={numQuestions} onChange={(e) => setNumQuestions(parseInt(e.target.value))} />
             </div>
 
             <div className="form-group">
-              <label htmlFor="difficulty">Difficulty Level:</label>
-              <select
-                id="difficulty"
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
-              >
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
+              <label htmlFor="difficulty">Difficulty:</label>
+              <select id="difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
+                <option value="easy">Beginner</option>
+                <option value="medium">Standard</option>
+                <option value="hard">Advanced</option>
               </select>
             </div>
 
             <div className="form-group">
-              <label htmlFor="mockTime">Time Limit (mins):</label>
-              <input
-                id="mockTime"
-                type="number"
-                min="1"
-                max="180"
-                value={mockTimeLimit}
-                onChange={(e) => setMockTimeLimit(parseInt(e.target.value) || 1)}
-              />
+              <label htmlFor="mockTime">Time (mins):</label>
+              <input id="mockTime" type="number" min="1" value={mockTimeLimit} onChange={(e) => setMockTimeLimit(parseInt(e.target.value) || 1)} />
             </div>
           </div>
 
-          <div style={{display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap'}}>
-            <button
-              onClick={handleGenerate}
-              disabled={loading || loadingSubjects}
-              className="btn-primary"
-            >
-              {loading ? 'Generating...' : 'Generate Questions'}
+          <div style={{display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap'}}>
+            <button onClick={handleGenerate} disabled={loading || loadingSubjects} className="btn-primary">
+              {loading ? 'Generating...' : '🚀 Generate Practice'}
             </button>
-
+            <button onClick={startSimulation} disabled={loading || loadingSubjects} className="btn-secondary">
+              🔒 Start Restricted Mock Exam
+            </button>
           </div>
         </>
       )}
 
-      {/* Show/Hide Answers + Print controls */}
       {questions.length > 0 && (
-        <div className="exam-controls" style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <button onClick={() => setShowAnswers(!showAnswers)} className="btn-secondary">
+        <div className="exam-controls" style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button onClick={() => {setShowAnswers(!showAnswers); setIsPrintAnswerSheet(false);}} className="btn-secondary">
             {showAnswers ? '🙈 Hide Answers' : '👁️ Show Answers'}
           </button>
-          <button onClick={() => window.print()} className="btn-secondary">
-            🖨️ Print Question Sheet
+          <button onClick={() => {setIsPrintAnswerSheet(false); setTimeout(() => window.print(), 100);}} className="btn-secondary">
+            🖨️ Print Question Paper
+          </button>
+          <button onClick={() => {setIsPrintAnswerSheet(true); setShowAnswers(false); setTimeout(() => window.print(), 100);}} className="btn-secondary">
+            📝 Print Answer Sheet Only
           </button>
         </div>
       )}
 
-      {generationTime > 0 && !isSimulating && (
+      {generationTime > 0 && !isSimulating && !isPrintAnswerSheet && (
         <div className="info generation-summary">
-          <span>Generated {questions.length} questions in {generationTime.toFixed(2)}s</span>
+          <span>{questions.length} questions generated by AI in {generationTime.toFixed(1)}s</span>
           {generationMeta?.source_used && (
-            <span className={`source-badge source-${generationMeta.source_used.replace(/\+/g, '_').replace(/[^a-z_]/g, '')}`}>
-              Source: {generationMeta.source_used.replace(/_/g, ' ')}
+            <span className={`source-badge source-${generationMeta.source_used}`}>
+               Using: {generationMeta.source_used.replace(/_/g, ' ')}
             </span>
           )}
         </div>
+      ) : isPrintAnswerSheet && (
+         <div className="print-header" style={{ textAlign: 'center', padding: '20px', borderBottom: '2px solid #000', marginBottom: '30px' }}>
+           <h1 style={{ textTransform: 'uppercase' }}>OFFICIAL ANSWER SHEET</h1>
+           <h2>{filteredSubjects.find(s => s.id === subject)?.name.toUpperCase()}</h2>
+           <p>Ensure answers are clearly marked in the spaces provided below.</p>
+         </div>
       )}
 
-      {/* Render questions — with section headers for standard exam */}
       <div className="questions-list">
-        {isStandardExam ? (
-          <>
-            {mcqQuestions.length > 0 && (
-              <>
-                <h3 style={{
-                  marginTop: '1rem', marginBottom: '0.5rem', padding: '0.6rem 1rem',
-                  background: 'linear-gradient(120deg, #0b7a4b, #10a261)', color: '#fff',
-                  borderRadius: '10px', fontFamily: 'Sora, sans-serif'
-                }}>
-                  SECTION A — Objective (Multiple Choice)
-                </h3>
-                {mcqQuestions.map((q, i) => {
-                  const globalIdx = questions.indexOf(q);
-                  return renderQuestionCard(q, globalIdx, `SECTION A – Question ${i + 1}`);
-                })}
-              </>
-            )}
-            {theoryQuestions.length > 0 && (
-              <>
-                <h3 style={{
-                  marginTop: '1.5rem', marginBottom: '0.5rem', padding: '0.6rem 1rem',
-                  background: 'linear-gradient(120deg, #c61f1f, #d33e2f)', color: '#fff',
-                  borderRadius: '10px', fontFamily: 'Sora, sans-serif'
-                }}>
-                  SECTION B — Theory / Structured
-                </h3>
-                {theoryQuestions.map((q, i) => {
-                  const globalIdx = questions.indexOf(q);
-                  return renderQuestionCard(q, globalIdx, `SECTION B – Question ${i + 1}`);
-                })}
-              </>
-            )}
-          </>
-        ) : (
-          questions.map((q, index) => renderQuestionCard(q, index, `Question ${index + 1}`))
-        )}
+        {questions.map((q, index) => renderQuestionCard(q, index, `Question ${index + 1}`))}
       </div>
 
-      {!isSimulating && !!examHistory.length && (
-        <div style={{ marginTop: '40px', padding: '20px', background: '#f8fafc', borderRadius: '12px' }}>
-          <h3>📜 Past Practices History</h3>
-          <div style={{ display: 'grid', gap: '15px', marginTop: '15px' }}>
-            {examHistory.map(entry => (
-              <div key={entry.id} style={{ padding: '15px', background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <strong style={{ display: 'block', fontSize: '1.1rem' }}>{entry.subject.replace(/_/g, ' ').toUpperCase()}</strong>
-                  <span style={{ color: '#64748b' }}>{new Date(entry.created_at).toLocaleString()}</span>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: entry.percentage >= 50 ? '#10b981' : '#ef4444' }}>
-                    {entry.percentage}%
-                  </div>
-                  <span style={{ color: '#64748b' }}>{entry.score_obtained} / {entry.total_questions} pts</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
+      {!isSimulating && examHistory.length > 0 && renderHistory()}
     </div>
   );
 }
+
+export default QuestionGenerator;

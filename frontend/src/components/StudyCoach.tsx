@@ -87,6 +87,7 @@ export function StudyCoach({
   const [image, setImage] = useState<File | null>(null);
   const [historyItems, setHistoryItems] = useState<Array<{ id: number; content: string; created_at: string }>>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMainConceptOnly, setIsMainConceptOnly] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -141,8 +142,19 @@ export function StudyCoach({
 
     try {
       const res = image
-        ? await tutorAPI.interpretImage(await fileToBase64(image), text || 'Interpret this image.', subject, '', image.name, image.type)
-        : await tutorAPI.ask(text, subject, '');
+        ? await tutorAPI.interpretImage({
+            image_base64: await fileToBase64(image),
+            question: text || 'Interpret this image.',
+            subject: subject,
+            filename: image.name,
+            content_type: image.type,
+            is_main_concept_only: isMainConceptOnly
+          })
+        : await tutorAPI.ask({
+            question: text,
+            subject: subject,
+            is_main_concept_only: isMainConceptOnly
+          });
 
       setMessages(prev => [...prev, {
         id: Date.now() + '-ai',
@@ -204,6 +216,15 @@ export function StudyCoach({
             )}
           </div>
           <div className="gemini-toprow__right">
+            <label className="gemini-toggle" title="Focus on core concept only (shorter answers)">
+              <input 
+                type="checkbox" 
+                checked={isMainConceptOnly} 
+                onChange={(e) => setIsMainConceptOnly(e.target.checked)} 
+              />
+              <span className="gemini-toggle__slider"></span>
+              <span className="gemini-toggle__label">Main Concept Only</span>
+            </label>
             {!isAuthenticated && (
               <span className="gemini-guest-chip" onClick={onRequireAuth}>
                 {guestChatsRemaining} free {guestChatsRemaining === 1 ? 'chat' : 'chats'} left · Sign up

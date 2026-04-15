@@ -26,6 +26,7 @@ class CurriculumResourceFetcher:
     YEAR_PAGES = {
         "year_1": f"{BASE_URL}/year1",
         "year_2": f"{BASE_URL}/year2",
+        "year_3": f"{BASE_URL}/year3",
     }
     CATALOG_PATH = settings.SITE_RESOURCE_DIR / "subjects_catalog.json"
     

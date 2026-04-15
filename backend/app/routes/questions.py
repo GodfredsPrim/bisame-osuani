@@ -114,6 +114,8 @@ async def generate_questions(request: QuestionGenerationRequest):
                 year_key = "year_1"
             elif request_year in {"2", "year2"}:
                 year_key = "year_2"
+            elif request_year in {"3", "year3"}:
+                year_key = "year_3"
 
         if not year_key:
             year_key = "year_1"
@@ -176,7 +178,7 @@ async def get_subjects():
                 catalog = json.load(f)
 
             years = catalog.get("years", {})
-            for year_key in ["year_1", "year_2"]:
+            for year_key in ["year_1", "year_2", "year_3"]:
                 for subject_info in years.get(year_key, []):
                     name = subject_info.get("name", "").strip()
                     if not name:
@@ -196,7 +198,7 @@ async def get_subjects():
                         {
                             "id": subject_id,
                             "name": name,
-                            "year": "Year 1" if year_key == "year_1" else "Year 2",
+                            "year": year_key.replace("_", " ").title(),
                         }
                     )
         except Exception as e:
@@ -217,6 +219,12 @@ async def get_subjects():
                 "Ghanaian Language", "Government", "History", "Literature-in-English", "Mathematics", 
                 "Physics", "Social Studies",
             ],
+            "year_3": [
+                "Additional Mathematics", "Agricultural Science", "Agriculture", "Biology", "Accounting", 
+                "Business Management", "Chemistry", "Economics", "English Language", "French", "Geography",
+                "Ghanaian Language", "Government", "History", "Literature-in-English", "Mathematics", 
+                "Physics", "Social Studies",
+            ],
         }
 
         for year_key, names in known_subjects.items():
@@ -230,7 +238,7 @@ async def get_subjects():
                     {
                         "id": subject_id,
                         "name": name,
-                        "year": "Year 1" if year_key == "year_1" else "Year 2",
+                        "year": year_key.replace("_", " ").title(),
                     }
                 )
 
@@ -248,6 +256,7 @@ async def get_resource_status(year: str, subject: str):
     year_key = year.lower().strip().replace(" ", "_")
     if year_key in {"1", "year1"}: year_key = "year_1"
     elif year_key in {"2", "year2"}: year_key = "year_2"
+    elif year_key in {"3", "year3"}: year_key = "year_3"
     subject_token = subject.lower().strip()
     if ":" in subject_token:
         _, subject_token = subject_token.split(":", 1)

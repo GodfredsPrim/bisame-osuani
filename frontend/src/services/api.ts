@@ -295,7 +295,6 @@ export const analysisAPI = {
   },
 };
 
-
 export interface TutorResponse {
   explanation: string;
   related_questions?: string[];
@@ -304,6 +303,23 @@ export interface TutorResponse {
   study_tips?: string[];
   steps?: string[];
   confidence_note?: string;
+}
+
+export interface TutorRequest {
+  question: string;
+  subject?: string;
+  context?: string;
+  is_main_concept_only?: boolean;
+}
+
+export interface TutorImageRequest {
+  question: string;
+  subject?: string;
+  context?: string;
+  image_base64: string;
+  filename?: string;
+  content_type?: string;
+  is_main_concept_only?: boolean;
 }
 
 export interface AuthUser {
@@ -331,31 +347,13 @@ export interface AuthConfigResponse {
 }
 
 export const tutorAPI = {
-  ask: async (question: string, subject?: string, context?: string): Promise<TutorResponse> => {
-    const response = await apiClient.post('/tutor/ask', {
-      question,
-      subject,
-      context,
-    });
+  ask: async (req: TutorRequest): Promise<TutorResponse> => {
+    const response = await apiClient.post('/tutor/ask', req);
     return response.data;
   },
 
-  interpretImage: async (
-    imageBase64: string,
-    question?: string,
-    subject?: string,
-    context?: string,
-    filename?: string,
-    contentType?: string,
-  ): Promise<TutorResponse> => {
-    const response = await apiClient.post('/tutor/interpret-image', {
-      image_base64: imageBase64,
-      question: question || 'Interpret this image and help me solve it.',
-      subject,
-      context,
-      filename,
-      content_type: contentType,
-    });
+  interpretImage: async (req: TutorImageRequest): Promise<TutorResponse> => {
+    const response = await apiClient.post('/tutor/interpret-image', req);
     return response.data;
   },
 
@@ -462,54 +460,6 @@ export const resourcesAPI = {
   },
 };
 
-export interface AdminAnalytics {
-  total_users: number;
-  active_subscriptions: number;
-  expiring_subscriptions: number;
-  total_revenue_ghs: number;
-  total_codes_generated: number;
-  total_codes_used: number;
-  recent_activity: Array<{ full_name: string; activity_at: string; type: string }>;
-}
-
-export interface CouponGenerateResponse {
-  codes: string[];
-  duration_months: number;
-}
-
-export interface Competition {
-  id: number;
-  title: string;
-  description: string;
-  prize: string;
-  start_date: string;
-  end_date: string;
-  is_active: boolean;
-  created_at: string;
-  pdf_url?: string;
-  image_url?: string;
-  quiz_json?: string;
-}
-
-export interface LeaderboardEntry {
-  player_name: string;
-  total_points: number;
-  rank: number;
-  is_online: boolean;
-}
-
-export interface PaymentRequest {
-  id: number;
-  user_id: number;
-  full_name: string;
-  email: string;
-  momo_name: string;
-  momo_number: string;
-  reference: string;
-  status: 'pending' | 'confirmed' | 'rejected';
-  created_at: string;
-}
-
 export const adminAPI = {
   loginWithSecret: async (secret: string): Promise<AuthResponse> => {
     const response = await apiClient.post('/admin/login-secret', null, { params: { secret } });
@@ -578,8 +528,6 @@ export const adminAPI = {
     const response = await apiClient.get('/admin/leaderboard');
     return response.data;
   },
-
-  // setupAdmin removed
 
   getPendingPayments: async (): Promise<PaymentRequest[]> => {
     const response = await apiClient.get('/admin/payments/pending');

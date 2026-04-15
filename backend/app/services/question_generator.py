@@ -201,20 +201,42 @@ Only include "options" for multiple choice questions (leave omit for essay). Do 
 
     def _load_resource_context(self, year_key: str, subject_slug: str) -> tuple[str, str, str]:
         """Load context from site resources and fallback past questions."""
-        textbooks_dir = settings.SITE_RESOURCE_DIR / "textbooks" / year_key / subject_slug
-        past_dir = settings.SITE_RESOURCE_DIR / "past_questions" / year_key / subject_slug
-        teacher_dir = settings.SITE_RESOURCE_DIR / "teacher_resources" / year_key / subject_slug
+        years_to_check = [year_key]
+        if year_key == "year_3":
+            # Mixed resource: pull from all SHS years if year 3 is selected
+            years_to_check = ["year_1", "year_2", "year_3"]
 
-        past_context = self._extract_excerpts_from_directory(past_dir, max_docs=2)
-        if not past_context:
-            past_context = self._extract_excerpts_from_legacy_past_questions(subject_slug, max_docs=2)
+        past_snippets = []
+        textbook_snippets = []
+        teacher_snippets = []
 
-        # Policy: if past questions exist for the selected subject, ignore textbook context.
-        textbook_context = ""
-        if not past_context:
-            textbook_context = self._extract_excerpts_from_directory(textbooks_dir, max_docs=2)
-        teacher_context = self._extract_excerpts_from_directory(teacher_dir, max_docs=2)
-        return past_context, textbook_context, teacher_context
+        for yk in years_to_check:
+            textbooks_dir = settings.SITE_RESOURCE_DIR / "textbooks" / yk / subject_slug
+            past_dir = settings.SITE_RESOURCE_DIR / "past_questions" / yk / subject_slug
+            teacher_dir = settings.SITE_RESOURCE_DIR / "teacher_resources" / yk / subject_slug
+
+            past_context = self._extract_excerpts_from_directory(past_dir, max_docs=2)
+            if not past_context:
+                past_context = self._extract_excerpts_from_legacy_past_questions(subject_slug, max_docs=2)
+            
+            if past_context:
+                past_snippets.append(past_context)
+
+            # Policy: if past questions exist for the selected subject, ignore textbook context.
+            if not past_snippets:
+                textbook_context = self._extract_excerpts_from_directory(textbooks_dir, max_docs=2)
+                if textbook_context:
+                    textbook_snippets.append(textbook_context)
+            
+            teacher_context = self._extract_excerpts_from_directory(teacher_dir, max_docs=2)
+            if teacher_context:
+                teacher_snippets.append(teacher_context)
+
+        return (
+            "\n\n".join(past_snippets) if past_snippets else "",
+            "\n\n".join(textbook_snippets) if textbook_snippets else "",
+            "\n\n".join(teacher_snippets) if teacher_snippets else ""
+        )
 
     def get_source_status(self, year_key: str, subject_slug: str) -> dict:
         """Return which resource source is available for generation."""
