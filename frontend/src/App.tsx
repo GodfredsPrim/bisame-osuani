@@ -598,36 +598,59 @@ function App() {
           )}
           
           <nav className="drawer-nav">
-            <button 
-              className={`drawer-link ${activeTab === 'study' ? 'active' : ''}`} 
-              onClick={() => { setActiveTab('study'); setMobileMenuOpen(false); }}
-            >
-              🧠 Study with AI
-            </button>
-            <button 
-              className={`drawer-link ${activeTab === 'generator' ? 'active' : ''}`} 
-              onClick={() => { openAuthGate('generator'); setMobileMenuOpen(false); }}
-            >
-              📝 Practice Sets
-            </button>
-            <button 
-              className={`drawer-link ${activeTab === 'analysis' ? 'active' : ''}`} 
-              onClick={() => { openAuthGate('analysis'); setMobileMenuOpen(false); }}
-            >
-              📊 WASSCE Questions
-            </button>
-            <button 
-              className={`drawer-link ${activeTab === 'live_quiz' ? 'active' : ''}`} 
-              onClick={() => { openAuthGate('live_quiz'); setMobileMenuOpen(false); }}
-            >
-              ⚡ Quiz Challenge
-            </button>
-            <button 
-              className={`drawer-link ${activeTab === 'history' ? 'active' : ''}`} 
-              onClick={() => { openAuthGate('history'); setMobileMenuOpen(false); }}
-            >
-              🕒 History
-            </button>
+            {account?.is_admin ? (
+              <button 
+                className={`drawer-link ${activeTab === 'admin' ? 'active' : ''}`} 
+                onClick={() => { setActiveTab('admin'); setMobileMenuOpen(false); }}
+              >
+                🛡️ Admin Dashboard
+              </button>
+            ) : (
+              <>
+                <button 
+                  className={`drawer-link ${activeTab === 'study' ? 'active' : ''}`} 
+                  onClick={() => { setActiveTab('study'); setMobileMenuOpen(false); }}
+                >
+                  🧠 Study with AI
+                </button>
+                <button 
+                  className={`drawer-link ${activeTab === 'generator' ? 'active' : ''}`} 
+                  onClick={() => { openAuthGate('generator'); setMobileMenuOpen(false); }}
+                >
+                  📝 Practice Sets
+                </button>
+                <button 
+                  className={`drawer-link ${activeTab === 'analysis' ? 'active' : ''}`} 
+                  onClick={() => { openAuthGate('analysis'); setMobileMenuOpen(false); }}
+                >
+                  📊 WASSCE Questions
+                </button>
+                <button 
+                  className={`drawer-link ${activeTab === 'live_quiz' ? 'active' : ''}`} 
+                  onClick={() => { openAuthGate('live_quiz'); setMobileMenuOpen(false); }}
+                >
+                  ⚡ Quiz Challenge
+                </button>
+                <button 
+                  className={`drawer-link ${activeTab === 'competitions' ? 'active' : ''}`} 
+                  onClick={() => { openAuthGate('competitions'); setMobileMenuOpen(false); }}
+                >
+                  📰 News & Updates
+                </button>
+                <button 
+                  className={`drawer-link ${activeTab === 'resources' ? 'active' : ''}`} 
+                  onClick={() => { openAuthGate('resources'); setMobileMenuOpen(false); }}
+                >
+                  📚 Library
+                </button>
+                <button 
+                  className={`drawer-link ${activeTab === 'history' ? 'active' : ''}`} 
+                  onClick={() => { openAuthGate('history'); setMobileMenuOpen(false); }}
+                >
+                  🕒 History
+                </button>
+              </>
+            )}
           </nav>
 
           <div className="drawer-footer">
