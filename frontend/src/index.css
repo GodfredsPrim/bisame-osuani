@@ -2547,6 +2547,51 @@ button:disabled {
   color: #fff;
 }
 
+.drawer-user {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(11, 122, 75, 0.05);
+  border-radius: 16px;
+  margin-bottom: 2rem;
+}
+
+[data-theme='dark'] .drawer-user {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.drawer-user__avatar {
+  width: 44px;
+  height: 44px;
+  background: var(--ghana-green);
+  color: #fff;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.drawer-user__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.drawer-user__name {
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--ink-900);
+}
+
+.sub-badge--admin {
+  background: rgba(16, 37, 61, 0.1);
+  color: var(--ghana-navy);
+}
+
 .drawer-nav {
   display: flex;
   flex-direction: column;

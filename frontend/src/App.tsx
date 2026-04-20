@@ -577,6 +577,26 @@ function App() {
             <button className="close-btn" onClick={() => setMobileMenuOpen(false)}>✕</button>
           </div>
           
+          {account && (
+            <div className="drawer-user">
+              <div className="drawer-user__avatar">{account.full_name.charAt(0)}</div>
+              <div className="drawer-user__info">
+                <span className="drawer-user__name">{account.full_name}</span>
+                {account.is_admin ? (
+                  <span className="sub-badge sub-badge--admin">Admin</span>
+                ) : (
+                  <>
+                    {hasActiveSubscription(account) ? (
+                      <span className="sub-badge sub-badge--active">✓ active</span>
+                    ) : (
+                      <span className="sub-badge sub-badge--inactive">free</span>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+          
           <nav className="drawer-nav">
             <button 
               className={`drawer-link ${activeTab === 'study' ? 'active' : ''}`} 
