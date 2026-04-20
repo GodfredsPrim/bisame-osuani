@@ -2423,7 +2423,8 @@ button:disabled {
   backdrop-filter: blur(10px);
   max-width: 100%;
   min-height: 40px;
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 }
 
 .nav-icon {
@@ -2433,8 +2434,19 @@ button:disabled {
 
 .nav-label {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.3rem;
+  overflow: hidden;
+}
+
+.nav-full-text {
+  display: inline-block;
+  max-width: 500px;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
 }
 
 .topbar__nav-btn:hover {
@@ -2463,7 +2475,15 @@ button:disabled {
     gap: 0.35rem;
   }
   .nav-full-text {
-    display: none;
+    max-width: 0;
+    opacity: 0;
+    margin-left: 0;
+  }
+
+  .topbar__nav-btn.active .nav-full-text {
+    max-width: 200px;
+    opacity: 1;
+    margin-left: 0.2rem;
   }
 }
 
@@ -2502,11 +2522,25 @@ button:disabled {
   .nav-label {
     align-items: center;
     font-size: 0.74rem;
+    flex-direction: column;
+    gap: 0.1rem;
   }
   
   .nav-icon {
     font-size: 1.35rem;
-    margin-bottom: 0.1rem;
+    margin-bottom: 0px;
+  }
+
+  .nav-full-text {
+    max-width: 0;
+    opacity: 0;
+    margin-top: 0;
+  }
+
+  .topbar__nav-btn.active .nav-full-text {
+    max-width: 100px;
+    opacity: 1;
+    margin-top: 0.1rem;
   }
 }
 
