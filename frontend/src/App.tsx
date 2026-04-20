@@ -141,7 +141,6 @@ function App() {
   const [adminSecretIn, setAdminSecretIn] = React.useState('')
   const [adminAuthError, setAdminAuthError] = React.useState('')
   const [adminAuthLoading, setAdminAuthLoading] = React.useState(false)
-  const [moreMenuOpen, setMoreMenuOpen] = React.useState(false)
 
   // Manual payment entry
   const [manualForm, setManualForm] = React.useState({ momoName: '', momoNumber: '', reference: '' })
@@ -503,43 +502,29 @@ function App() {
           ) : (
             <nav className="topbar__nav">
               <button className={`topbar__nav-btn ${activeTab === 'study' ? 'active' : ''}`} onClick={() => setActiveTab('study')}>
-                <span className="nav-icon">🧠</span>Study <span className="nav-full-text">with AI</span>
+                <span className="nav-icon">🧠</span><span className="nav-label">Study <span className="nav-full-text">with AI</span></span>
               </button>
               <button className={`topbar__nav-btn ${activeTab === 'generator' ? 'active' : ''}`} onClick={() => openAuthGate('generator')}>
-                <span className="nav-icon">📝</span>Generate <span className="nav-full-text">Questions</span>
+                <span className="nav-icon">📝</span><span className="nav-label">Practice <span className="nav-full-text">Sets</span></span>
               </button>
               <button className={`topbar__nav-btn ${activeTab === 'analysis' ? 'active' : ''}`} onClick={() => openAuthGate('analysis')}>
-                <span className="nav-icon">📊</span>Likely WASSCE <span className="nav-full-text">Questions</span>
+                <span className="nav-icon">📊</span><span className="nav-label">WASSCE <span className="nav-full-text">Questions</span></span>
               </button>
-              
-              <div className="topbar__more-wrap">
-                <button 
-                  className={`topbar__nav-btn topbar__more-toggle ${['live_quiz', 'competitions', 'resources', 'leaderboard', 'history'].includes(activeTab) ? 'active' : ''}`} 
-                  onClick={() => setMoreMenuOpen(!moreMenuOpen)}
-                >
-                  <span className="nav-icon">✨</span> More {moreMenuOpen ? '▴' : '▾'}
-                </button>
-                
-                {moreMenuOpen && (
-                  <div className="topbar__dropdown" onClick={() => setMoreMenuOpen(false)}>
-                    <button className={`dropdown-item ${activeTab === 'live_quiz' ? 'active' : ''}`} onClick={() => openAuthGate('live_quiz')}>
-                      <span className="nav-icon">⚡</span> Challenge Quiz
-                    </button>
-                    <button className={`dropdown-item ${activeTab === 'competitions' ? 'active' : ''}`} onClick={() => openAuthGate('competitions')}>
-                      <span className="nav-icon">📢</span> Announcements
-                    </button>
-                    <button className={`dropdown-item ${activeTab === 'resources' ? 'active' : ''}`} onClick={() => openAuthGate('resources')}>
-                      <span className="nav-icon">📚</span> Library
-                    </button>
-                    <button className={`dropdown-item ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => openAuthGate('leaderboard')}>
-                      <span className="nav-icon">🏆</span> Leaderboard
-                    </button>
-                    <button className={`dropdown-item ${activeTab === 'history' ? 'active' : ''}`} onClick={() => openAuthGate('history')}>
-                      <span className="nav-icon">🕒</span> History
-                    </button>
-                  </div>
-                )}
-              </div>
+              <button className={`topbar__nav-btn ${activeTab === 'live_quiz' ? 'active' : ''}`} onClick={() => openAuthGate('live_quiz')}>
+                <span className="nav-icon">⚡</span><span className="nav-label">Quiz <span className="nav-full-text">Challenge</span></span>
+              </button>
+              <button className={`topbar__nav-btn ${activeTab === 'competitions' ? 'active' : ''}`} onClick={() => openAuthGate('competitions')}>
+                <span className="nav-icon">📢</span><span className="nav-label">News <span className="nav-full-text">& Updates</span></span>
+              </button>
+              <button className={`topbar__nav-btn ${activeTab === 'resources' ? 'active' : ''}`} onClick={() => openAuthGate('resources')}>
+                <span className="nav-icon">📚</span><span className="nav-label">Library</span>
+              </button>
+              <button className={`topbar__nav-btn ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => openAuthGate('leaderboard')}>
+                <span className="nav-icon">🏆</span><span className="nav-label">Ranking</span>
+              </button>
+              <button className={`topbar__nav-btn ${activeTab === 'history' ? 'active' : ''}`} onClick={() => openAuthGate('history')}>
+                <span className="nav-icon">🕒</span><span className="nav-label">History</span>
+              </button>
             </nav>
           )}
 
