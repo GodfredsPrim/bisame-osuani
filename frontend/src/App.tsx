@@ -141,6 +141,8 @@ function App() {
   const [adminSecretIn, setAdminSecretIn] = React.useState('')
   const [adminAuthError, setAdminAuthError] = React.useState('')
   const [adminAuthLoading, setAdminAuthLoading] = React.useState(false)
+  const [topbarVisible, setTopbarVisible] = React.useState(false)
+  const [lastScrollY, setLastScrollY] = React.useState(0)
 
   // Manual payment entry
   const [manualForm, setManualForm] = React.useState({ momoName: '', momoNumber: '', reference: '' })
@@ -168,11 +170,23 @@ function App() {
 
   React.useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 30)
+      const currentScrollY = window.scrollY
+      setIsScrolled(currentScrollY > 30)
+      
+      // Reveal on scroll up, hide on scroll down (if not at top)
+      if (currentScrollY < 10) {
+        setTopbarVisible(true)
+      } else if (currentScrollY < lastScrollY) {
+        setTopbarVisible(true)
+      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setTopbarVisible(false)
+      }
+      
+      setLastScrollY(currentScrollY)
     }
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
+  }, [lastScrollY])
 
   React.useEffect(() => {
     questionsAPI.loadDeferred().catch((err) => {
@@ -481,10 +495,11 @@ function App() {
 
   return (
     <div className={`app app-shell ${isExamSimulating ? 'exam-mode' : ''}`}>
+      <div className="topbar-trigger"></div>
       {!isExamSimulating && (
-        <header className={`topbar ${isScrolled ? 'topbar--scrolled' : ''}`}>
+        <header className={`topbar ${isScrolled ? 'topbar--scrolled' : ''} ${topbarVisible ? 'topbar--visible' : ''}`}>
           <div className="topbar__brand">
-            <div className="brand-mark">F2</div>
+            <div className="brand-mark">F2L</div>
             <div className="brand-copy">
               <strong className="brand-title">
                 fun2learn <span>online</span>
@@ -595,7 +610,7 @@ function App() {
                 {/* Header */}
                 <div className="authv2__header">
                   <div className="authv2__logo">
-                    <div className="authv2__logo-mark">F2</div>
+                    <div className="authv2__logo-mark">F2L</div>
                     <span>fun2learn online</span>
                   </div>
                   <h2 className="authv2__title">

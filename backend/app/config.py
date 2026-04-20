@@ -29,8 +29,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
 
     # Admin Credentials
-    ADMIN_USERNAME: str = "bisameadmin"
-    ADMIN_PASSWORD: str = "bisame-admin-2026"
+    ADMIN_USERNAME: str = "fun2learnadmin"
+    ADMIN_PASSWORD: str = "f2l-admin-2026"
     ADMIN_SECRET: str = "change-this-admin-secret"
     SUBSCRIPTION_PRICE_GHS: str = "10"
     SUBSCRIPTION_MONTHS: int = 3

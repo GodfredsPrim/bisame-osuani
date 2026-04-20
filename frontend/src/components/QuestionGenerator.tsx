@@ -49,6 +49,7 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
   const [timerActive, setTimerActive] = useState(false);
   const [examHistory, setExamHistory] = useState<ExamHistoryEntry[]>([]);
   const [semester, setSemester] = useState('all_year');
+  const [isViewingHistory, setIsViewingHistory] = useState(false);
 
   const availableYears = Array.from(new Set(subjects.map((s) => s.year))).sort();
   if (!availableYears.includes('Year 3') && subjects.length > 0) {
@@ -247,6 +248,7 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
       setQuestionType(data.questionType || 'multiple_choice');
       setShowAnswers(true);
       setIsPrintAnswerSheet(false);
+      setIsViewingHistory(true);
       
       // Scroll to top to see questions
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -490,18 +492,33 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
     </div>
   );
 
-  if (showHistoryOnly) return renderHistory();
+  if (showHistoryOnly && !isViewingHistory) return renderHistory();
 
   return (
     <div className={`generator-section ${isSimulating ? 'simulating' : ''}`}>
       <div className="generator-hero">
-        <h2>{isSimulating ? '📝 Official Mock Exam — Restricted Mode' : 'Generate Question'}</h2>
+        <h2>
+          {isViewingHistory ? '📜 Historical Practice Result' : (isSimulating ? '📝 Official Mock Exam — Restricted Mode' : 'Generate Question')}
+        </h2>
         <p>
-          {isSimulating
-            ? 'You are in exam mode. Navigation is locked. Complete the session and press "Submit & Finish" to exit.'
-            : 'Generate realistic practice questions using textbooks and past questions.'
+          {isViewingHistory 
+            ? `Reviewing your performance from ${new Date(examHistory.find(h => h.id === examResult?.id)?.created_at || '').toLocaleString()}`
+            : (isSimulating
+              ? 'You are in exam mode. Navigation is locked. Complete the session and press "Submit & Finish" to exit.'
+              : 'Generate realistic practice questions using textbooks and past questions.'
+            )
           }
         </p>
+        
+        {isViewingHistory && (
+          <button 
+            onClick={() => { setIsViewingHistory(false); setQuestions([]); setExamResult(null); }} 
+            className="btn-secondary" 
+            style={{ marginTop: '1.25rem', background: '#475569', boxShadow: 'none' }}
+          >
+            ← Back to History List
+          </button>
+        )}
       </div>
 
       {error && <div className="error-message">{error}</div>}
