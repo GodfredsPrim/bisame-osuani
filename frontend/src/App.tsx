@@ -508,19 +508,19 @@ function App() {
               ) : (
                 <>
                   <button className={`nav-link ${activeTab === 'study' ? 'active' : ''}`} onClick={() => setActiveTab('study')}>
-                    Study
+                    Study <span className="nav-full-text">with AI</span>
                   </button>
                   <button className={`nav-link ${activeTab === 'generator' ? 'active' : ''}`} onClick={() => openAuthGate('generator')}>
-                    Practice
+                    Practice <span className="nav-full-text">Sets</span>
                   </button>
                   <button className={`nav-link ${activeTab === 'analysis' ? 'active' : ''}`} onClick={() => openAuthGate('analysis')}>
-                    WASSCE
+                    WASSCE <span className="nav-full-text">Questions</span>
                   </button>
                   <button className={`nav-link ${activeTab === 'live_quiz' ? 'active' : ''}`} onClick={() => openAuthGate('live_quiz')}>
-                    Quiz
+                    Quiz <span className="nav-full-text">Challenge</span>
                   </button>
                   <button className={`nav-link ${activeTab === 'competitions' ? 'active' : ''}`} onClick={() => openAuthGate('competitions')}>
-                    News
+                    News <span className="nav-full-text">& Updates</span>
                   </button>
                   <button className={`nav-link ${activeTab === 'resources' ? 'active' : ''}`} onClick={() => openAuthGate('resources')}>
                     Library

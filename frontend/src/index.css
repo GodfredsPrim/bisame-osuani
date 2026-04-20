@@ -2335,15 +2335,19 @@ button:disabled {
 }
 
 .nav-link {
-  padding: 0.5rem 0.9rem;
+  padding: 0.5rem 1rem;
   font-size: 0.92rem;
   font-weight: 600;
   color: var(--ink-700);
   background: transparent;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
 }
 
 .nav-link:hover {
@@ -2354,6 +2358,23 @@ button:disabled {
 .nav-link.active {
   background: var(--ghana-green);
   color: #fff;
+  padding: 0.5rem 1.25rem;
+  box-shadow: 0 4px 12px rgba(11, 122, 75, 0.3);
+}
+
+.nav-full-text {
+  display: inline-block;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.nav-link.active .nav-full-text {
+  max-width: 200px;
+  opacity: 1;
+  margin-left: 0.45rem;
 }
 
 /* Right Section */
