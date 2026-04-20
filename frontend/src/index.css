@@ -2394,23 +2394,40 @@ button:disabled {
 .user-profile {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
+}
+
+.user-profile__info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
 }
 
 .user-name {
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--ink-900);
+  line-height: 1;
 }
 
-.logout-btn {
-  font-size: 0.85rem;
-  font-weight: 600;
+.sub-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+
+.sub-badge--active {
+  background: rgba(11, 122, 75, 0.1);
+  color: var(--ghana-green);
+}
+
+.sub-badge--inactive {
+  background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  opacity: 0.8;
 }
 
 .logout-btn:hover {

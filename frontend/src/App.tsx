@@ -539,7 +539,18 @@ function App() {
                 </button>
                 {account ? (
                   <div className="user-profile">
-                    <span className="user-name">{account.full_name.split(' ')[0]}</span>
+                    <div className="user-profile__info">
+                      <span className="user-name">{account.full_name.split(' ')[0]}</span>
+                      {isSubscribed ? (
+                        <span className="sub-badge sub-badge--active" title={subDaysLeft !== null ? `${subDaysLeft} days remaining` : 'Active'}>
+                          ✓ active
+                        </span>
+                      ) : (
+                        <span className="sub-badge sub-badge--inactive">
+                          free
+                        </span>
+                      )}
+                    </div>
                     <button className="logout-btn" onClick={handleLogout}>Log out</button>
                   </div>
                 ) : (
