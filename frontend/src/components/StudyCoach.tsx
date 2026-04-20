@@ -281,7 +281,7 @@ export function StudyCoach({
         {!hasMessages && (
           <div className="gemini-welcome">
             <div className="gemini-welcome__logo">
-              <div className="gemini-welcome__mark">B</div>
+              <div className="gemini-welcome__mark">Fun2Learn AI</div>
             </div>
             <h1 className="gemini-welcome__title">How can I help you study?</h1>
             <p className="gemini-welcome__sub">Ask a question, upload an image, or pick a starter below.</p>
@@ -303,7 +303,7 @@ export function StudyCoach({
             {messages.map(m => (
               <div key={m.id} className={`gemini-msg gemini-msg--${m.sender}`}>
                 {m.sender === 'ai' && (
-                  <div className="gemini-msg__avatar">B</div>
+                  <div className="gemini-msg__avatar">F2L</div>
                 )}
                 <div className="gemini-msg__body">
                   {m.sender === 'ai' && m.response

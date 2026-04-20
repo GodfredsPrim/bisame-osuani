@@ -173,12 +173,12 @@ function App() {
       const currentScrollY = window.scrollY
       setIsScrolled(currentScrollY > 30)
       
-      // Reveal on scroll up, hide on scroll down (if not at top)
+      // Auto-show at the very top
       if (currentScrollY < 10) {
         setTopbarVisible(true)
-      } else if (currentScrollY < lastScrollY) {
-        setTopbarVisible(true)
-      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
+      } 
+      // Hide on scroll down past a threshold
+      else if (currentScrollY > lastScrollY && currentScrollY > 100) {
         setTopbarVisible(false)
       }
       
@@ -496,6 +496,16 @@ function App() {
   return (
     <div className={`app app-shell ${isExamSimulating ? 'exam-mode' : ''}`}>
       <div className="topbar-trigger"></div>
+      {!topbarVisible && !isExamSimulating && (
+        <button 
+          className={`topbar-toggle ${isScrolled ? 'topbar-toggle--scrolled' : ''}`}
+          onClick={() => setTopbarVisible(true)}
+          title="Show Navigation"
+        >
+          <span className="toggle-icon">☰</span>
+          <span className="toggle-label">Menu</span>
+        </button>
+      )}
       {!isExamSimulating && (
         <header className={`topbar ${isScrolled ? 'topbar--scrolled' : ''} ${topbarVisible ? 'topbar--visible' : ''}`}>
           <div className="topbar__brand">
