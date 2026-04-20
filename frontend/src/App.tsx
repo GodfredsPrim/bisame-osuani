@@ -141,7 +141,7 @@ function App() {
   const [adminSecretIn, setAdminSecretIn] = React.useState('')
   const [adminAuthError, setAdminAuthError] = React.useState('')
   const [adminAuthLoading, setAdminAuthLoading] = React.useState(false)
-  const [topbarVisible, setTopbarVisible] = React.useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
   const [lastScrollY, setLastScrollY] = React.useState(0)
 
   // Manual payment entry
@@ -171,17 +171,7 @@ function App() {
   React.useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY
-      setIsScrolled(currentScrollY > 30)
-      
-      // Auto-show at the very top
-      if (currentScrollY < 10) {
-        setTopbarVisible(true)
-      } 
-      // Hide on scroll down past a threshold
-      else if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        setTopbarVisible(false)
-      }
-      
+      setIsScrolled(currentScrollY > 20)
       setLastScrollY(currentScrollY)
     }
     window.addEventListener('scroll', handleScroll, { passive: true })
@@ -494,99 +484,133 @@ function App() {
   }, [activeTab, account])
 
   return (
-    <div className={`app app-shell ${isExamSimulating ? 'exam-mode' : ''}`}>
+    <div className={`app app-shell ${isExamSimulating ? 'exam-mode' : ''} ${mobileMenuOpen ? 'drawer-open' : ''}`}>
       <div className="topbar-trigger"></div>
-      {!topbarVisible && !isExamSimulating && (
-        <button 
-          className={`topbar-toggle ${isScrolled ? 'topbar-toggle--scrolled' : ''}`}
-          onClick={() => setTopbarVisible(true)}
-          title="Show Navigation"
-        >
-          <span className="toggle-icon">☰</span>
-          <span className="toggle-label">Menu</span>
-        </button>
-      )}
       {!isExamSimulating && (
-        <header className={`topbar ${isScrolled ? 'topbar--scrolled' : ''} ${topbarVisible ? 'topbar--visible' : ''}`}>
-          <div className="topbar__brand">
-            <div className="brand-mark">F2L</div>
-            <div className="brand-copy">
-              <strong className="brand-title">
-                fun2learn <span>online</span>
-              </strong>
-              <span>{activeTab === 'admin' ? 'Administrative control center' : 'Modern SHS exam prep for confident learners'}</span>
+        <header className={`topbar ${isScrolled ? 'topbar--scrolled' : ''}`}>
+          <div className="topbar__inner">
+            <div className="topbar__left">
+              <div className="topbar__brand">
+                <div className="brand-mark">F2L</div>
+                <div className="brand-copy">
+                  <strong className="brand-title">
+                    fun2learn <span>online</span>
+                  </strong>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {account?.is_admin ? (
-            <nav className="topbar__nav">
-              <button className="topbar__nav-btn active" onClick={() => setActiveTab('admin')}>
-                <span className="nav-icon">🛡️</span>Administrative Dashboard
-              </button>
-            </nav>
-          ) : (
-            <nav className="topbar__nav">
-              <button className={`topbar__nav-btn ${activeTab === 'study' ? 'active' : ''}`} onClick={() => setActiveTab('study')}>
-                <span className="nav-icon">🧠</span><span className="nav-label">Study <span className="nav-full-text">with AI</span></span>
-              </button>
-              <button className={`topbar__nav-btn ${activeTab === 'generator' ? 'active' : ''}`} onClick={() => openAuthGate('generator')}>
-                <span className="nav-icon">📝</span><span className="nav-label">Practice <span className="nav-full-text">Sets</span></span>
-              </button>
-              <button className={`topbar__nav-btn ${activeTab === 'analysis' ? 'active' : ''}`} onClick={() => openAuthGate('analysis')}>
-                <span className="nav-icon">📊</span><span className="nav-label">WASSCE <span className="nav-full-text">Questions</span></span>
-              </button>
-              <button className={`topbar__nav-btn ${activeTab === 'live_quiz' ? 'active' : ''}`} onClick={() => openAuthGate('live_quiz')}>
-                <span className="nav-icon">⚡</span><span className="nav-label">Quiz <span className="nav-full-text">Challenge</span></span>
-              </button>
-              <button className={`topbar__nav-btn ${activeTab === 'competitions' ? 'active' : ''}`} onClick={() => openAuthGate('competitions')}>
-                <span className="nav-icon">📢</span><span className="nav-label">News <span className="nav-full-text">& Updates</span></span>
-              </button>
-              <button className={`topbar__nav-btn ${activeTab === 'resources' ? 'active' : ''}`} onClick={() => openAuthGate('resources')}>
-                <span className="nav-icon">📚</span><span className="nav-label">Library</span>
-              </button>
-              <button className={`topbar__nav-btn ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => openAuthGate('leaderboard')}>
-                <span className="nav-icon">🏆</span><span className="nav-label">Ranking</span>
-              </button>
-              <button className={`topbar__nav-btn ${activeTab === 'history' ? 'active' : ''}`} onClick={() => openAuthGate('history')}>
-                <span className="nav-icon">🕒</span><span className="nav-label">History</span>
-              </button>
-            </nav>
-          )}
-
-          <div className="topbar__account">
-            <button className="theme-toggle-btn" onClick={toggleTheme} title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}>
-              {theme === 'light' ? '🌙' : '☀️'}
-            </button>
-            {account ? (
-              <>
-                <div className="topbar__account-meta">
-                  <strong>{account.full_name.split(' ')[0]}</strong>
-                  {isSubscribed ? (
-                    <span className="sub-badge sub-badge--active">
-                      ✓ Active{subDaysLeft !== null ? ` · ${subDaysLeft}d left` : ''}
-                    </span>
-                  ) : (
-                    <span className="sub-badge sub-badge--inactive" onClick={() => { setAuthStep('verify_code'); setAuthOpen(true) }}>
-                      ⚠ No subscription
-                    </span>
-                  )}
-                </div>
-                <button className="topbar__auth-btn" onClick={handleLogout}>Log out</button>
-              </>
-            ) : (
-              <>
-                <div className="topbar__account-meta">
-                  <strong>{guestChatsRemaining} free chats left</strong>
-                  <span>Sign up to unlock all features</span>
-                </div>
-                <button className="topbar__auth-btn topbar__auth-btn--cta" onClick={() => openAuthGate(CHAT_TARGET)}>
-                  Sign up free
+            <nav className="topbar__center desktop-only">
+              {account?.is_admin ? (
+                <button className="nav-link active" onClick={() => setActiveTab('admin')}>
+                  <span className="nav-icon">🛡️</span>Admin
                 </button>
-              </>
-            )}
+              ) : (
+                <>
+                  <button className={`nav-link ${activeTab === 'study' ? 'active' : ''}`} onClick={() => setActiveTab('study')}>
+                    Study
+                  </button>
+                  <button className={`nav-link ${activeTab === 'generator' ? 'active' : ''}`} onClick={() => openAuthGate('generator')}>
+                    Practice
+                  </button>
+                  <button className={`nav-link ${activeTab === 'analysis' ? 'active' : ''}`} onClick={() => openAuthGate('analysis')}>
+                    WASSCE
+                  </button>
+                  <button className={`nav-link ${activeTab === 'live_quiz' ? 'active' : ''}`} onClick={() => openAuthGate('live_quiz')}>
+                    Quiz
+                  </button>
+                  <button className={`nav-link ${activeTab === 'competitions' ? 'active' : ''}`} onClick={() => openAuthGate('competitions')}>
+                    News
+                  </button>
+                  <button className={`nav-link ${activeTab === 'resources' ? 'active' : ''}`} onClick={() => openAuthGate('resources')}>
+                    Library
+                  </button>
+                  <button className={`nav-link ${activeTab === 'history' ? 'active' : ''}`} onClick={() => openAuthGate('history')}>
+                    History
+                  </button>
+                </>
+              )}
+            </nav>
+
+            <div className="topbar__right">
+              <div className="account-actions desktop-only">
+                <button className="theme-toggle-btn" onClick={toggleTheme}>
+                  {theme === 'light' ? '🌙' : '☀️'}
+                </button>
+                {account ? (
+                  <div className="user-profile">
+                    <span className="user-name">{account.full_name.split(' ')[0]}</span>
+                    <button className="logout-btn" onClick={handleLogout}>Log out</button>
+                  </div>
+                ) : (
+                  <button className="signup-btn" onClick={() => openAuthGate(CHAT_TARGET)}>
+                    Sign up free
+                  </button>
+                )}
+              </div>
+
+              <button className="mobile-menu-trigger" onClick={() => setMobileMenuOpen(true)}>
+                <span className="menu-icon">☰</span>
+              </button>
+            </div>
           </div>
         </header>
       )}
+
+      {/* Mobile Drawer */}
+      <div className={`mobile-drawer ${mobileMenuOpen ? 'open' : ''}`}>
+        <div className="drawer-backdrop" onClick={() => setMobileMenuOpen(false)}></div>
+        <div className="drawer-content">
+          <div className="drawer-header">
+            <div className="brand-mark">F2L</div>
+            <button className="close-btn" onClick={() => setMobileMenuOpen(false)}>✕</button>
+          </div>
+          
+          <nav className="drawer-nav">
+            <button 
+              className={`drawer-link ${activeTab === 'study' ? 'active' : ''}`} 
+              onClick={() => { setActiveTab('study'); setMobileMenuOpen(false); }}
+            >
+              🧠 Study with AI
+            </button>
+            <button 
+              className={`drawer-link ${activeTab === 'generator' ? 'active' : ''}`} 
+              onClick={() => { openAuthGate('generator'); setMobileMenuOpen(false); }}
+            >
+              📝 Practice Sets
+            </button>
+            <button 
+              className={`drawer-link ${activeTab === 'analysis' ? 'active' : ''}`} 
+              onClick={() => { openAuthGate('analysis'); setMobileMenuOpen(false); }}
+            >
+              📊 WASSCE Questions
+            </button>
+            <button 
+              className={`drawer-link ${activeTab === 'live_quiz' ? 'active' : ''}`} 
+              onClick={() => { openAuthGate('live_quiz'); setMobileMenuOpen(false); }}
+            >
+              ⚡ Quiz Challenge
+            </button>
+            <button 
+              className={`drawer-link ${activeTab === 'history' ? 'active' : ''}`} 
+              onClick={() => { openAuthGate('history'); setMobileMenuOpen(false); }}
+            >
+              🕒 History
+            </button>
+          </nav>
+
+          <div className="drawer-footer">
+            <button className="theme-toggle-btn" onClick={toggleTheme}>
+              {theme === 'light' ? 'Dark Mode 🌙' : 'Light Mode ☀️'}
+            </button>
+            {account ? (
+              <button className="logout-btn-full" onClick={handleLogout}>Log out</button>
+            ) : (
+              <button className="signup-btn-full" onClick={() => openAuthGate(CHAT_TARGET)}>Sign up free</button>
+            )}
+          </div>
+        </div>
+      </div>
 
       <main className="app-content app-content--clean">
         {activeTab === 'study' && (
