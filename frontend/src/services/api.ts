@@ -23,6 +23,20 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const detail = error.response?.data?.detail;
+    if (error.response?.status === 401 && detail && typeof detail === 'string' && detail.includes('Another device')) {
+      // Force clear local storage and reload to trigger the auth gate
+      localStorage.removeItem('f2l_token');
+      localStorage.removeItem('f2l_user');
+      window.location.reload();
+    }
+    return Promise.reject(error);
+  }
+);
+
 export interface UploadResponse {
   filename: string;
   file_type: string;

@@ -75,6 +75,10 @@ class AuthService:
                 conn.execute(
                     "ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0"
                 )
+            if "session_id" not in existing_cols:
+                conn.execute(
+                    "ALTER TABLE users ADD COLUMN session_id TEXT"
+                )
 
             # ── Access codes table ─────────────────────────────────────────────
             conn.execute(
@@ -236,7 +240,7 @@ class AuthService:
             is_admin=bool(row["is_admin"]),
         )
 
-    def _issue_token(self, user: AuthUser, is_static_admin: bool = False) -> str:
+    def _issue_token(self, user: AuthUser, is_static_admin: bool = False, session_id: Optional[str] = None) -> str:
         now = datetime.now(timezone.utc)
         payload = {
             "sub": str(user.id),
@@ -244,7 +248,8 @@ class AuthService:
             "provider": user.provider,
             "iat": int(now.timestamp()),
             "exp": int((now + timedelta(hours=settings.ACCESS_TOKEN_EXPIRE_HOURS)).timestamp()),
-            "is_static_admin": is_static_admin
+            "is_static_admin": is_static_admin,
+            "sid": session_id or user.session_id if hasattr(user, 'session_id') else None
         }
         return jwt.encode(payload, settings.AUTH_SECRET_KEY, algorithm="HS256")
 
@@ -267,15 +272,16 @@ class AuthService:
             if existing:
                 raise ValueError("An account with this email already exists.")
 
+            new_session_id = secrets.token_hex(16)
             cursor = conn.execute(
                 """
                 INSERT INTO users
                     (full_name, email, password_hash, salt, provider, provider_subject,
-                     created_at, last_login_at, subscription_status, subscription_expires_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     created_at, last_login_at, subscription_status, subscription_expires_at, session_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (full_name.strip(), normalized_email, password_hash, salt,
-                 "email", None, now, now, "inactive", None),
+                 "email", None, now, now, "inactive", None, new_session_id),
             )
             conn.commit()
             user_id = cursor.lastrowid
@@ -288,7 +294,7 @@ class AuthService:
             subscription_status="inactive",
             subscription_expires_at=None,
         )
-        return self._issue_token(user), user
+        return self._issue_token(user, session_id=new_session_id), user
 
     def login(self, email: str, password: str) -> Tuple[str, AuthUser]:
         normalized_email = email.strip().lower()
@@ -312,13 +318,15 @@ class AuthService:
                 raise ValueError("Incorrect email or password.")
 
             now = datetime.now(timezone.utc).isoformat()
+            new_session_id = secrets.token_hex(16)
             conn.execute(
-                "UPDATE users SET last_login_at = ? WHERE id = ?", (now, row["id"])
+                "UPDATE users SET last_login_at = ?, session_id = ? WHERE id = ?", 
+                (now, new_session_id, row["id"])
             )
             conn.commit()
 
         user = self._row_to_user(row)
-        return self._issue_token(user), user
+        return self._issue_token(user, session_id=new_session_id), user
 
     def login_admin_static(self, username: str, password: str) -> Tuple[str, AuthUser]:
         if username != settings.ADMIN_USERNAME or password != settings.ADMIN_PASSWORD:
@@ -405,17 +413,23 @@ class AuthService:
                     "SELECT * FROM users WHERE email = ?", (email,)
                 ).fetchone()
                 user = self._row_to_user(updated)
-                return self._issue_token(user), user
+                new_session_id = secrets.token_hex(16)
+                conn.execute(
+                    "UPDATE users SET session_id = ? WHERE id = ?",
+                    (new_session_id, user.id)
+                )
+                conn.commit()
+                return self._issue_token(user, session_id=new_session_id), user
 
             cursor = conn.execute(
                 """
                 INSERT INTO users
                     (full_name, email, password_hash, salt, provider, provider_subject,
-                     created_at, last_login_at, subscription_status, subscription_expires_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     created_at, last_login_at, subscription_status, subscription_expires_at, session_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (full_name, email, None, None, "google", subject,
-                 now, now, "inactive", None),
+                 now, now, "inactive", None, new_session_id),
             )
             conn.commit()
             user = AuthUser(
@@ -426,7 +440,7 @@ class AuthService:
                 subscription_status="inactive",
                 subscription_expires_at=None,
             )
-            return self._issue_token(user), user
+            return self._issue_token(user, session_id=new_session_id), user
 
     def get_user_from_token(self, token: str) -> AuthUser:
         try:
@@ -459,6 +473,14 @@ class AuthService:
             ).fetchone()
             if not row:
                 raise ValueError("Account no longer exists.")
+            
+            # SESSION LOCK: Verify session_id matches (except for admins)
+            if not bool(row["is_admin"]):
+                token_session_id = payload.get("sid")
+                current_session_id = row["session_id"]
+                if token_session_id != current_session_id:
+                    raise ValueError("Another device has logged into this account. Please log in again.")
+
             return self._row_to_user(row)
 
     # ── subscription / access-code methods ────────────────────────────────────
