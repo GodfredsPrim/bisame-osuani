@@ -3775,9 +3775,6 @@ button:disabled {
   box-shadow: 0 8px 24px rgba(11, 122, 75, 0.25);
   margin: 0 auto;
 }
-  box-shadow: 0 8px 24px rgba(11, 122, 75, 0.25);
-  margin: 0 auto;
-}
 
 .gemini-welcome__title {
   font-family: 'Sora', 'Manrope', sans-serif;
