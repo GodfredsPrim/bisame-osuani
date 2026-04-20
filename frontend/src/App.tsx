@@ -146,8 +146,8 @@ function App() {
 
   // Manual payment entry
   const [manualForm, setManualForm] = React.useState({ momoName: '', momoNumber: '', reference: '' })
-  const [manualLoading] = React.useState(false)
-  const [manualSuccess] = React.useState(false)
+  const [manualLoading, setManualLoading] = React.useState(false)
+  const [manualSuccess, setManualSuccess] = React.useState(false)
 
   // Subscription info banner
   const [subDaysLeft, setSubDaysLeft] = React.useState<number | null>(null)
@@ -439,6 +439,12 @@ function App() {
 
   const handleManualPaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setManualLoading(true)
+    // Simulate API call or just show success for now as it's a reference submission
+    setTimeout(() => {
+      setManualLoading(false)
+      setManualSuccess(true)
+    }, 1500)
   }
 
   const handleSkipCode = () => {
@@ -502,30 +508,38 @@ function App() {
 
             <nav className="topbar__center desktop-only">
               {account?.is_admin ? (
-                <button className="nav-link active" onClick={() => setActiveTab('admin')}>
-                  <span className="nav-icon">🛡️</span>Admin
+                <button className={`nav-link ${activeTab === 'admin' ? 'active' : ''}`} onClick={() => setActiveTab('admin')}>
+                  <span className="nav-icon">🛡️</span>
+                  Admin <span className="nav-full-text">Dashboard</span>
                 </button>
               ) : (
                 <>
                   <button className={`nav-link ${activeTab === 'study' ? 'active' : ''}`} onClick={() => setActiveTab('study')}>
+                    <span className="nav-icon">🧠</span>
                     Study <span className="nav-full-text">with AI</span>
                   </button>
                   <button className={`nav-link ${activeTab === 'generator' ? 'active' : ''}`} onClick={() => openAuthGate('generator')}>
+                    <span className="nav-icon">📝</span>
                     Practice <span className="nav-full-text">Sets</span>
                   </button>
                   <button className={`nav-link ${activeTab === 'analysis' ? 'active' : ''}`} onClick={() => openAuthGate('analysis')}>
+                    <span className="nav-icon">📊</span>
                     WASSCE <span className="nav-full-text">Questions</span>
                   </button>
                   <button className={`nav-link ${activeTab === 'live_quiz' ? 'active' : ''}`} onClick={() => openAuthGate('live_quiz')}>
+                    <span className="nav-icon">⚡</span>
                     Quiz <span className="nav-full-text">Challenge</span>
                   </button>
                   <button className={`nav-link ${activeTab === 'competitions' ? 'active' : ''}`} onClick={() => openAuthGate('competitions')}>
+                    <span className="nav-icon">📰</span>
                     News <span className="nav-full-text">& Updates</span>
                   </button>
                   <button className={`nav-link ${activeTab === 'resources' ? 'active' : ''}`} onClick={() => openAuthGate('resources')}>
+                    <span className="nav-icon">📚</span>
                     Library
                   </button>
                   <button className={`nav-link ${activeTab === 'history' ? 'active' : ''}`} onClick={() => openAuthGate('history')}>
+                    <span className="nav-icon">🕒</span>
                     History
                   </button>
                 </>
@@ -534,16 +548,17 @@ function App() {
 
             <div className="topbar__right">
               <div className="account-actions desktop-only">
-                <button className="theme-toggle-btn" onClick={toggleTheme}>
+                <button className="theme-toggle-btn" onClick={toggleTheme} title="Toggle theme">
                   {theme === 'light' ? '🌙' : '☀️'}
                 </button>
                 {account ? (
                   <div className="user-profile">
+                    <div className="user-profile__avatar">{account.full_name.charAt(0)}</div>
                     <div className="user-profile__info">
                       <span className="user-name">{account.full_name.split(' ')[0]}</span>
                       {isSubscribed ? (
                         <span className="sub-badge sub-badge--active" title={subDaysLeft !== null ? `${subDaysLeft} days remaining` : 'Active'}>
-                          ✓ active
+                          <span className="badge-icon">✓</span> active
                         </span>
                       ) : (
                         <span className="sub-badge sub-badge--inactive">
@@ -603,7 +618,7 @@ function App() {
                 className={`drawer-link ${activeTab === 'admin' ? 'active' : ''}`} 
                 onClick={() => { setActiveTab('admin'); setMobileMenuOpen(false); }}
               >
-                🛡️ Admin Dashboard
+                <span className="drawer-icon">🛡️</span> Admin Dashboard
               </button>
             ) : (
               <>
@@ -611,58 +626,60 @@ function App() {
                   className={`drawer-link ${activeTab === 'study' ? 'active' : ''}`} 
                   onClick={() => { setActiveTab('study'); setMobileMenuOpen(false); }}
                 >
-                  🧠 Study with AI
+                  <span className="drawer-icon">🧠</span> Study with AI
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'generator' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('generator'); setMobileMenuOpen(false); }}
                 >
-                  📝 Practice Sets
+                  <span className="drawer-icon">📝</span> Practice Sets
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'analysis' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('analysis'); setMobileMenuOpen(false); }}
                 >
-                  📊 WASSCE Questions
+                  <span className="drawer-icon">📊</span> WASSCE Questions
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'live_quiz' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('live_quiz'); setMobileMenuOpen(false); }}
                 >
-                  ⚡ Quiz Challenge
+                  <span className="drawer-icon">⚡</span> Quiz Challenge
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'competitions' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('competitions'); setMobileMenuOpen(false); }}
                 >
-                  📰 News & Updates
+                  <span className="drawer-icon">📰</span> News & Updates
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'resources' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('resources'); setMobileMenuOpen(false); }}
                 >
-                  📚 Library
+                  <span className="drawer-icon">📚</span> Library
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'history' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('history'); setMobileMenuOpen(false); }}
                 >
-                  🕒 History
+                  <span className="drawer-icon">🕒</span> History
                 </button>
               </>
             )}
           </nav>
 
-          <div className="drawer-footer">
-            <button className="theme-toggle-btn" onClick={toggleTheme}>
-              {theme === 'light' ? 'Dark Mode 🌙' : 'Light Mode ☀️'}
+          <footer className="drawer-footer">
+            <button className="theme-toggle-btn" style={{ width: '100%', gap: '10px' }} onClick={toggleTheme}>
+              {theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}
             </button>
             {account ? (
-              <button className="logout-btn-full" onClick={handleLogout}>Log out</button>
+              <button className="drawer-logout-btn" onClick={handleLogout}>Log out</button>
             ) : (
-              <button className="signup-btn-full" onClick={() => openAuthGate(CHAT_TARGET)}>Sign up free</button>
+              <button className="signup-btn-full" onClick={() => { openAuthGate(CHAT_TARGET); setMobileMenuOpen(false); }}>
+                Sign up free
+              </button>
             )}
-          </div>
+          </footer>
         </div>
       </div>
 
@@ -829,7 +846,7 @@ function App() {
                   <div className="authv2__ticket-icon"><TicketIcon /></div>
                   <h2 className="authv2__title">Premium Activation</h2>
                   <p className="authv2__subtitle">
-                    Pay <strong>GH₵ 10</strong> via MoMo to <strong>0248317900</strong>.<br/>
+                    Pay <strong>GH₵ 20</strong> via MoMo to <strong>0248317900</strong>.<br/>
                     After payment, enter the access code given to you to unlock premium features.
                   </p>
                 </div>

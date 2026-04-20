@@ -249,7 +249,7 @@ class AuthService:
             "iat": int(now.timestamp()),
             "exp": int((now + timedelta(hours=settings.ACCESS_TOKEN_EXPIRE_HOURS)).timestamp()),
             "is_static_admin": is_static_admin,
-            "sid": session_id or user.session_id if hasattr(user, 'session_id') else None
+            "sid": session_id or (getattr(user, "session_id") if hasattr(user, "session_id") else None)
         }
         return jwt.encode(payload, settings.AUTH_SECRET_KEY, algorithm="HS256")
 
@@ -421,6 +421,7 @@ class AuthService:
                 conn.commit()
                 return self._issue_token(user, session_id=new_session_id), user
 
+            new_session_id = secrets.token_hex(16)
             cursor = conn.execute(
                 """
                 INSERT INTO users
@@ -734,12 +735,13 @@ class AuthService:
                 (soon,),
             ).fetchone()[0]
             
-            # Revenue: Each confirmed student pays 10 GHS
+            # Revenue calculation using the configured price
             confirmed_payments = conn.execute("SELECT COUNT(*) FROM payment_requests WHERE status = 'confirmed'").fetchone()[0]
             used_coupons = conn.execute("SELECT COUNT(*) FROM access_codes WHERE used_at IS NOT NULL").fetchone()[0]
             
-            # Assume each unique subscription activation (either via code or manual payment) represents a 10 GHS payment
-            total_rev_ghs = (confirmed_payments + used_coupons) * 10
+            # Use settings for price calculation instead of hardcoded 10
+            price = float(settings.SUBSCRIPTION_PRICE_GHS) if settings.SUBSCRIPTION_PRICE_GHS.isdigit() else 10.0
+            total_rev_ghs = (confirmed_payments + used_coupons) * price
 
             recent_activity = conn.execute(
                 """

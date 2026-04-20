@@ -29,8 +29,7 @@ apiClient.interceptors.response.use(
     const detail = error.response?.data?.detail;
     if (error.response?.status === 401 && detail && typeof detail === 'string' && detail.includes('Another device')) {
       // Force clear local storage and reload to trigger the auth gate
-      localStorage.removeItem('f2l_token');
-      localStorage.removeItem('f2l_user');
+      localStorage.removeItem('fun2learn_access_token');
       window.location.reload();
     }
     return Promise.reject(error);

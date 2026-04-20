@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str = "fun2learnadmin"
     ADMIN_PASSWORD: str = "f2l-admin-2026"
     ADMIN_SECRET: str = "change-this-admin-secret"
-    SUBSCRIPTION_PRICE_GHS: str = "10"
+    SUBSCRIPTION_PRICE_GHS: str = "20"
     SUBSCRIPTION_MONTHS: int = 3
 
     # CORS
