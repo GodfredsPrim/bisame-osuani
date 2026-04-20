@@ -1,4 +1,4 @@
-# Ghana SHS AI Question Generator
+# fun2learn Online - AI Question Generator
 
 An AI-powered web application that generates exam questions for Ghana Secondary School students using Retrieval-Augmented Generation (RAG), analyzing patterns in past questions to create realistic practice questions.
 

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { questionsAPI, Question } from '../services/api';
+import { questionsAPI, Question, GeneratedQuestions } from '../services/api';
 import MathRenderer from './MathRenderer';
 
 interface ExamHistoryEntry {
@@ -14,11 +14,31 @@ interface ExamHistoryEntry {
   details_json?: string;
 }
 
-interface Subject {
+interface SubjectOption {
   id: string;
   name: string;
   year: string;
 }
+
+const PAPER_ORDER = ['paper_1', 'paper_2', 'paper_3'] as const;
+
+const PAPER_LABELS: Record<string, { title: string; subtitle: string; short: string }> = {
+  paper_1: {
+    title: 'Paper 1: Objective Test',
+    subtitle: '40 randomized multiple-choice questions arranged in official-style exam order.',
+    short: 'MCQ',
+  },
+  paper_2: {
+    title: 'Paper 2: Theory',
+    subtitle: 'Structured theory questions with stronger marking guides and exam-standard depth.',
+    short: 'Theory',
+  },
+  paper_3: {
+    title: 'Paper 3: Practical / Alternative',
+    subtitle: 'Included only when the subject has an official practical or alternative paper.',
+    short: 'Practical',
+  },
+};
 
 export function AnalysisDashboard() {
   const [subject, setSubject] = useState('mathematics');
@@ -29,22 +49,44 @@ export function AnalysisDashboard() {
   const [studentAnswers, setStudentAnswers] = useState<Record<number, string>>({});
   const [examResult, setExamResult] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [subjects, setSubjects] = useState<SubjectOption[]>([]);
   const [error, setError] = useState('');
-  const [mockTimeLimit, setMockTimeLimit] = useState(120); // Default 120 minutes for full paper
+  const [mockTimeLimit, setMockTimeLimit] = useState(120);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [timerActive, setTimerActive] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
   const [examHistory, setExamHistory] = useState<ExamHistoryEntry[]>([]);
+  const [generationMeta, setGenerationMeta] = useState<GeneratedQuestions | null>(null);
 
-  const availableYears = Array.from(new Set(subjects.map((s) => s.year))).sort();
-  if (!availableYears.includes('Year 3') && subjects.length > 0) {
-    availableYears.push('Year 3');
-  }
+  const availableYears = useMemo(() => {
+    const years = Array.from(new Set(subjects.map((item) => item.year))).sort();
+    if (!years.includes('Year 3') && subjects.length > 0) {
+      years.push('Year 3');
+    }
+    return years;
+  }, [subjects]);
 
-  const filteredSubjects = selectedYear === 'Year 3' 
-    ? Array.from(new Map(subjects.map(s => [s.name, s])).values())
-    : subjects.filter((s) => s.year === selectedYear);
+  const filteredSubjects = useMemo(() => {
+    if (selectedYear === 'Year 3') {
+      return Array.from(new Map(subjects.map((item) => [item.name, item])).values());
+    }
+    return subjects.filter((item) => item.year === selectedYear);
+  }, [selectedYear, subjects]);
+
+  const activeSubjectLabel = useMemo(
+    () => filteredSubjects.find((item) => item.id === subject)?.name || subject,
+    [filteredSubjects, subject]
+  );
+
+  const organizedPapers = useMemo(() => generationMeta?.organized_papers || {}, [generationMeta]);
+
+  const paperSections = useMemo(() => {
+    return PAPER_ORDER.map((paperKey) => ({
+      key: paperKey,
+      ...PAPER_LABELS[paperKey],
+      questions: organizedPapers[paperKey] || [],
+    })).filter((section) => section.questions.length > 0);
+  }, [organizedPapers]);
 
   useEffect(() => {
     const fetchSubjects = async () => {
@@ -52,32 +94,36 @@ export function AnalysisDashboard() {
         const data = await questionsAPI.getSubjects();
         const subjectList = data.subjects || [];
         setSubjects(Array.isArray(subjectList) ? subjectList : []);
+
         if (Array.isArray(subjectList) && subjectList.length > 0) {
-          const firstYear = subjectList.find((s: Subject) => s.year === 'Year 1')?.year || subjectList[0].year;
+          const firstYear = subjectList.find((item: SubjectOption) => item.year === 'Year 1')?.year || subjectList[0].year;
           setSelectedYear(firstYear);
-          const firstForYear = subjectList.find((s: Subject) => s.year === firstYear);
+          const firstForYear = subjectList.find((item: SubjectOption) => item.year === firstYear);
           if (firstForYear) {
             setSubject(firstForYear.id);
           }
         }
-        setError('');
-        
+
         try {
           const hist = await questionsAPI.getExamHistory();
-          setExamHistory(hist.filter((h: any) => h.exam_type === 'likely_wassce'));
-        } catch(e) {}
-        
-      } catch (error) {
-        console.error('Error fetching subjects:', error);
+          setExamHistory(hist.filter((item: any) => item.exam_type === 'likely_wassce'));
+        } catch {
+          setExamHistory([]);
+        }
+
+        setError('');
+      } catch (fetchError) {
+        console.error('Error fetching subjects:', fetchError);
         setError('Could not load subjects.');
       }
     };
+
     fetchSubjects();
   }, []);
 
   useEffect(() => {
     if (!subjects.length) return;
-    const firstForYear = subjects.find((s) => s.year === selectedYear);
+    const firstForYear = subjects.find((item) => item.year === selectedYear);
     if (firstForYear) {
       setSubject(firstForYear.id);
     }
@@ -91,23 +137,26 @@ export function AnalysisDashboard() {
 
     setLoading(true);
     setError('');
+    setQuestions([]);
+    setGenerationMeta(null);
+    setShowAnswers(false);
+    setStudentAnswers({});
+    setExamResult(null);
+
     try {
-      // Standard type is hardcoded here for "Likely WASSCE Questions"
-      const result = await questionsAPI.generateQuestions(
+      const result = await questionsAPI.generateProfessionalWassce({
         subject,
-        selectedYear,
-        'standard',
-        46, // 40 MCQ + 6 Theory
-        'medium'
-      );
-      setQuestions(result.questions);
-      setShowAnswers(false);
-      setStudentAnswers({});
-      setExamResult(null);
-    } catch (error) {
-      console.error('Error generating questions:', error);
-      const backendMessage = axios.isAxiosError(error)
-        ? (error.response?.data?.detail || error.message)
+        year: selectedYear,
+        question_type: 'standard',
+      });
+
+      const orderedQuestions = PAPER_ORDER.flatMap((paperKey) => result.organized_papers?.[paperKey] || []);
+      setQuestions(orderedQuestions.length ? orderedQuestions : result.questions);
+      setGenerationMeta(result);
+    } catch (generationError) {
+      console.error('Error generating paper:', generationError);
+      const backendMessage = axios.isAxiosError(generationError)
+        ? generationError.response?.data?.detail || generationError.message
         : 'Failed to generate paper.';
       setError(backendMessage);
     } finally {
@@ -122,13 +171,13 @@ export function AnalysisDashboard() {
     setShowAnswers(false);
     setTimeLeft(mockTimeLimit * 60);
     setTimerActive(true);
-    
+
     try {
-      document.documentElement.requestFullscreen().catch(err => {
-        console.warn('Fullscreen request denied:', err);
+      document.documentElement.requestFullscreen().catch((fullscreenError) => {
+        console.warn('Fullscreen request denied:', fullscreenError);
       });
-    } catch (e) {
-      console.warn('Fullscreen API error:', e);
+    } catch (fullscreenError) {
+      console.warn('Fullscreen API error:', fullscreenError);
     }
   };
 
@@ -137,45 +186,46 @@ export function AnalysisDashboard() {
     setTimeLeft(null);
     setIsSimulating(false);
     if (document.fullscreenElement) {
-      document.exitFullscreen().catch(err => console.warn(err));
+      document.exitFullscreen().catch((exitError) => console.warn(exitError));
     }
   };
 
   const submitExamGrading = async () => {
     setIsSubmitting(true);
     try {
-      const items = questions.map((q, i) => ({
-        question_text: q.question_text,
-        question_type: q.question_type,
-        correct_answer: q.correct_answer,
-        explanation: q.explanation,
-        options: q.options,
-        student_answer: studentAnswers[i] || '',
+      const items = questions.map((question, index) => ({
+        question_text: question.question_text,
+        question_type: question.question_type,
+        correct_answer: question.correct_answer,
+        explanation: question.explanation,
+        options: question.options,
+        student_answer: studentAnswers[index] || '',
       }));
-      
-      const res = await questionsAPI.markPractice(items, 'simulation_user', subject);
-      setExamResult(res);
+
+      const result = await questionsAPI.markPractice(items, 'simulation_user', subject);
+      setExamResult(result);
       setShowAnswers(true);
-      
+
       try {
         await questionsAPI.saveExamHistory({
           exam_type: 'likely_wassce',
-          subject: subject,
-          score_obtained: res.score_obtained,
-          total_questions: res.total_questions,
-          percentage: res.percentage,
+          subject,
+          score_obtained: result.score_obtained,
+          total_questions: result.total_questions,
+          percentage: result.percentage,
           details_json: JSON.stringify({
-            results: res.results,
-            questions: questions,
-            subject: subject,
-            selectedYear: selectedYear
-          })
+            results: result.results,
+            questions,
+            subject,
+            selectedYear,
+            organized_papers: generationMeta?.organized_papers,
+          }),
         });
-      } catch (historyErr) {
-        console.error('Failed to save history', historyErr);
+      } catch (historyError) {
+        console.error('Failed to save history', historyError);
       }
-    } catch (err) {
-      console.error('Error marking practice:', err);
+    } catch (submitError) {
+      console.error('Error marking practice:', submitError);
       alert('Error submitting exam for grading.');
     } finally {
       setIsSubmitting(false);
@@ -187,25 +237,34 @@ export function AnalysisDashboard() {
     try {
       if (!entry.details_json) return;
       const data = JSON.parse(entry.details_json);
-      
       if (Array.isArray(data)) {
-        alert("This history item was saved in an older format and cannot be viewed instantly.");
+        alert('This history item was saved in an older format and cannot be viewed instantly.');
         return;
       }
 
-      setQuestions(data.questions || []);
+      const restoredQuestions = data.questions || [];
+      setQuestions(restoredQuestions);
+      setGenerationMeta((prev) => ({
+        ...(prev || {
+          questions: restoredQuestions,
+          generation_time: 0,
+          model_used: 'history_restore',
+        }),
+        questions: restoredQuestions,
+        organized_papers: data.organized_papers || prev?.organized_papers,
+      }));
       setExamResult({
         results: data.results,
         score_obtained: entry.score_obtained,
         total_questions: entry.total_questions,
-        percentage: entry.percentage
+        percentage: entry.percentage,
       });
       setSubject(data.subject || entry.subject);
       setSelectedYear(data.selectedYear || 'Year 1');
       setShowAnswers(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (e) {
-      console.error("Failed to parse history details", e);
+    } catch (parseError) {
+      console.error('Failed to parse history details', parseError);
     }
   };
 
@@ -216,51 +275,73 @@ export function AnalysisDashboard() {
         submitExamGrading();
       }
     };
+
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, [isSimulating, studentAnswers, examResult]);
+  }, [isSimulating, examResult, studentAnswers]);
 
   useEffect(() => {
-    let interval: any;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (timerActive && timeLeft !== null && timeLeft > 0) {
       interval = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev !== null && prev <= 1) {
+        setTimeLeft((previous) => {
+          if (previous !== null && previous <= 1) {
             clearInterval(interval);
             submitExamGrading();
             return 0;
           }
-          return prev !== null ? prev - 1 : null;
+          return previous !== null ? previous - 1 : null;
         });
       }, 1000);
     }
-    return () => clearInterval(interval);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [timerActive, timeLeft]);
 
-  const mcqQuestions = questions.filter(q => q.question_type === 'multiple_choice');
-  const theoryQuestions = questions.filter(q => q.question_type === 'essay' || q.question_type === 'short_answer');
+  const renderQuestionCard = (question: Question, globalIndex: number, labelPrefix: string) => (
+    <article key={`${labelPrefix}-${globalIndex}`} className="question-card likely-question-card">
+      <div className="likely-question-card__head">
+        <span className="likely-question-card__label">{labelPrefix}</span>
+        <span className="likely-question-card__type">
+          {question.options?.length ? 'Multiple Choice' : 'Theory'}
+        </span>
+      </div>
 
-  const renderQuestionCard = (q: Question, globalIndex: number, labelPrefix: string) => (
-    <div key={`q-${globalIndex}`} className="question-card" style={{ padding: '20px', border: '1px solid #eaeaea', borderRadius: '8px', marginBottom: '15px', background: '#fff' }}>
-      <h4 style={{ color: '#0b7a4b', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '12px' }}>{labelPrefix}</h4>
-      <div style={{ whiteSpace: 'pre-wrap', fontSize: '1.1rem', marginBottom: '1rem' }}><strong><MathRenderer text={q.question_text} /></strong></div>
+      <div className="likely-question-card__body">
+        <strong><MathRenderer text={question.question_text} /></strong>
+      </div>
 
       <div className="interactive-answer">
-        {q.options && q.options.length > 0 ? (
+        {question.options && question.options.length > 0 ? (
           <div className="options" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '15px' }}>
-            {q.options.map((opt, i) => {
-              const letter = String.fromCharCode(65 + i);
-              const cleanedOpt = opt.replace(/^(Option\s+[A-D][:.]\s*|[A-D][:.]\s*)/i, '').trim();
+            {question.options.map((option, index) => {
+              const letter = String.fromCharCode(65 + index);
+              const cleanedOption = option.replace(/^(Option\s+[A-D][:.]\s*|[A-D][:.]\s*)/i, '').trim();
               return (
-                <label key={i} className="option" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '10px', background: studentAnswers[globalIndex] === letter ? '#e6f7ff' : '#f9f9f9', borderRadius: '6px', border: studentAnswers[globalIndex] === letter ? '1px solid #1890ff' : '1px solid transparent' }}>
-                  <input 
-                    type="radio" 
-                    name={`hall-question-${globalIndex}`} 
+                <label
+                  key={index}
+                  className="option"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    cursor: 'pointer',
+                    padding: '10px',
+                    background: studentAnswers[globalIndex] === letter ? '#e6f7ff' : '#f9f9f9',
+                    borderRadius: '6px',
+                    border: studentAnswers[globalIndex] === letter ? '1px solid #1890ff' : '1px solid transparent',
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name={`likely-question-${globalIndex}`}
                     value={letter}
                     checked={studentAnswers[globalIndex] === letter}
-                    onChange={(e) => setStudentAnswers(prev => ({ ...prev, [globalIndex]: e.target.value }))}
+                    onChange={(event) => setStudentAnswers((prev) => ({ ...prev, [globalIndex]: event.target.value }))}
                   />
-                  <span>{letter}: <MathRenderer text={cleanedOpt} /></span>
+                  <span>{letter}: <MathRenderer text={cleanedOption} /></span>
                 </label>
               );
             })}
@@ -269,37 +350,66 @@ export function AnalysisDashboard() {
           <textarea
             placeholder="Type your detailed answer here... (Show all workings for sub-parts like (a)(i), (b))"
             rows={8}
-            style={{ width: '100%', marginTop: '15px', padding: '12px', border: '1px solid #ccc', borderRadius: '6px', fontFamily: 'inherit', fontSize: '1rem' }}
+            style={{
+              width: '100%',
+              marginTop: '15px',
+              padding: '12px',
+              border: '1px solid #ccc',
+              borderRadius: '6px',
+              fontFamily: 'inherit',
+              fontSize: '1rem',
+            }}
             value={studentAnswers[globalIndex] || ''}
-            onChange={(e) => setStudentAnswers(prev => ({ ...prev, [globalIndex]: e.target.value }))}
+            onChange={(event) => setStudentAnswers((prev) => ({ ...prev, [globalIndex]: event.target.value }))}
           />
         )}
       </div>
 
       {showAnswers && (
         <div className="answer-section" style={{ marginTop: '20px', padding: '15px', background: '#f0fdf4', borderRadius: '6px', borderLeft: '4px solid #10b981' }}>
-          {examResult && examResult.results[globalIndex] && (
-            <div style={{ marginBottom: '10px', padding: '8px', background: examResult.results[globalIndex].is_correct ? '#d1fae5' : '#fee2e2', borderRadius: '4px' }}>
+          {examResult?.results?.[globalIndex] && (
+            <div
+              style={{
+                marginBottom: '10px',
+                padding: '8px',
+                background: examResult.results[globalIndex].is_correct ? '#d1fae5' : '#fee2e2',
+                borderRadius: '4px',
+              }}
+            >
               <strong>Score:</strong> {examResult.results[globalIndex].score * 100}% | <strong>Feedback:</strong> {examResult.results[globalIndex].feedback}
             </div>
           )}
-          <p><strong>Expected Answer/Rubric:</strong> <MathRenderer text={q.correct_answer || 'See explanation'} /></p>
-          <p><strong>Explanation:</strong> <MathRenderer text={q.explanation} /></p>
+          <p><strong>Expected Answer/Rubric:</strong> <MathRenderer text={question.correct_answer || 'See explanation'} /></p>
+          <p><strong>Explanation:</strong> <MathRenderer text={question.explanation} /></p>
         </div>
       )}
-    </div>
+    </article>
   );
 
   return (
-    <div className={`analysis-section ${isSimulating ? 'simulating' : ''}`} style={{ maxWidth: '1000px', margin: '0 auto' }}>
+    <div className={`analysis-section ${isSimulating ? 'simulating' : ''}`} style={{ maxWidth: '1100px', margin: '0 auto' }}>
       {!isSimulating && (
         <div className="generator-hero">
-          <h2>Likely WASSCE Questions: Full Paper Hall</h2>
+          <h2>fun2learn online WASSCE Studio</h2>
           <p>
-            {selectedYear === 'Year 3' 
-              ? '✅ Strict Past-Question Mode: Constructing full papers purely from authentic WASSCE examination patterns.' 
-              : 'Generate and solve complete 40-MCQ + 6-Theory WASSCE examination papers under strict simulation.'}
+            {selectedYear === 'Year 3'
+              ? 'Year 3 combines Year 1 and Year 2 coverage, delivers 40 MCQs first, then standard theory and practical sections where the subject supports them. When past papers are missing, the paper is built directly from scanned textbook material.'
+              : 'Each paper follows official flow: 40 MCQs first, theory next, and practical only when the subject supports it, with randomized topic coverage across generations.'}
           </p>
+        </div>
+      )}
+
+      {loading && (
+        <div className="likely-loading-modal" role="status" aria-live="polite" aria-label="Generating likely WASSCE paper">
+          <div className="likely-loading-modal__card">
+            <div className="likely-loading-modal__spinner" />
+            <h3>Generating Likely WASSCE Paper</h3>
+            <p>We are assembling 40 objectives, strengthening theory and practical sections, and randomizing topic coverage for a sharper exam-style paper.</p>
+            <div className="generation-caution generation-caution--modal">
+              This can take about 30 to 90 seconds depending on subject depth and how much material needs to be assembled.
+            </div>
+            <span className="likely-loading-modal__hint">{activeSubjectLabel} | {selectedYear}</span>
+          </div>
         </div>
       )}
 
@@ -307,53 +417,95 @@ export function AnalysisDashboard() {
 
       {isSimulating ? (
         <div className="sim-exit-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#101923', color: '#fff', padding: '15px 25px', borderRadius: '8px', position: 'sticky', top: 0, zIndex: 1000, marginBottom: '20px' }}>
-          <span><strong>📋 Subject:</strong> {subjects.find(s => s.id === subject)?.name}</span>
+          <span><strong>Subject:</strong> {activeSubjectLabel}</span>
           <span><strong>Progress:</strong> {Object.keys(studentAnswers).length} / {questions.length}</span>
           {timeLeft !== null && (
             <span style={{ fontWeight: 'bold', color: timeLeft < 300 ? '#ff4d4f' : '#fff' }}>
-              ⏱️ Time Left: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+              Time Left: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
             </span>
           )}
           <button onClick={submitExamGrading} disabled={isSubmitting} className="btn-primary" style={{ background: '#52c41a', border: 'none' }}>
-            {isSubmitting ? 'Grading...' : '✅ Submit Paper'}
+            {isSubmitting ? 'Grading...' : 'Submit Paper'}
           </button>
         </div>
       ) : (
         <>
-          <div className="form-grid generator-panel" style={{ background: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #dbe4ef', marginBottom: '20px' }}>
+          <div className="form-grid generator-panel">
             <div className="form-group">
-              <label>Select Year:</label>
-              <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
-                {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+              <label>Select Year</label>
+              <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
+                {availableYears.map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
               </select>
             </div>
             <div className="form-group">
-              <label>Select Subject:</label>
-              <select value={subject} onChange={(e) => setSubject(e.target.value)}>
-                {filteredSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              <label>Select Subject</label>
+              <select value={subject} onChange={(event) => setSubject(event.target.value)}>
+                {filteredSubjects.map((item) => (
+                  <option key={item.id} value={item.id}>{item.name}</option>
+                ))}
               </select>
             </div>
             <div className="form-group">
-              <label>Time Limit (mins):</label>
-              <input type="number" value={mockTimeLimit} onChange={(e) => setMockTimeLimit(parseInt(e.target.value) || 1)} />
+              <label>Time Limit (mins)</label>
+              <input type="number" min="1" value={mockTimeLimit} onChange={(event) => setMockTimeLimit(parseInt(event.target.value) || 1)} />
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '15px', marginBottom: '30px' }}>
-            <button onClick={handleGenerate} disabled={loading} className="btn-primary" style={{ flex: 1, padding: '15px' }}>
-              {loading ? '📄 Constructing Full Paper...' : '📑 Generate Full WASSCE Paper'}
+          <div className="likely-actions">
+            <div className="generation-caution" role="note">
+              Likely WASSCE generation is heavier than normal practice. Expect roughly 30 to 90 seconds for full paper assembly, especially when extra theory or practical sections need to be built from subject materials.
+            </div>
+            <button
+              onClick={handleGenerate}
+              disabled={loading}
+              className="btn-primary"
+              style={{
+                flex: 1,
+                padding: '18px',
+                fontSize: '1.05rem',
+                background: 'linear-gradient(135deg, #10253d 0%, #1e3a8a 100%)',
+                boxShadow: '0 10px 15px -3px rgba(30, 58, 138, 0.3)',
+              }}
+            >
+              {loading ? 'Building Likely WASSCE Paper...' : 'Generate Likely WASSCE Paper'}
             </button>
             {questions.length > 0 && (
               <>
-                <button onClick={startSimulation} className="btn-secondary" style={{ flex: 1, background: '#101923' }}>
-                  🔒 Start Exam (Restricted)
+                <button onClick={startSimulation} className="btn-secondary likely-actions__secondary">
+                  Official Hall Simulation
                 </button>
-                <button onClick={() => window.print()} className="btn-secondary" style={{ flex: 1, background: '#4b5563', color: 'white' }}>
-                  🖨️ Print Question Sheet
+                <button onClick={() => window.print()} className="btn-secondary likely-actions__tertiary">
+                  Print / Export Layout
                 </button>
               </>
             )}
           </div>
+
+          {generationMeta && (
+            <section className="likely-structure-panel">
+              <div className="likely-structure-panel__head">
+                <div>
+                  <h3>Exam Structure</h3>
+                  <p>The generated paper is organized exactly in exam order.</p>
+                </div>
+                <span className="source-badge source-exam_structured">
+                  Exam Ready
+                </span>
+              </div>
+              <div className="likely-structure-grid">
+                {paperSections.map((section) => (
+                  <div key={section.key} className="likely-structure-card">
+                    <span className="likely-structure-card__tag">{section.short}</span>
+                    <strong>{section.title}</strong>
+                    <p>{section.subtitle}</p>
+                    <span className="likely-structure-card__count">{section.questions.length} questions</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </>
       )}
 
@@ -362,61 +514,79 @@ export function AnalysisDashboard() {
           <h2 style={{ color: '#fff' }}>Simulation Official Result</h2>
           <h1 style={{ fontSize: '4rem', margin: '10px 0' }}>{examResult.percentage}%</h1>
           <p style={{ fontSize: '1.2rem' }}>Answered {examResult.total_questions} questions | Score: {examResult.score_obtained}</p>
-          <p style={{ marginTop: '15px', opacity: 0.9 }}>Review your answers below to learn from mistakes.</p>
+          <p style={{ marginTop: '15px', opacity: 0.9 }}>Review your answers below in the same paper sequence.</p>
         </div>
       )}
 
       <div className="questions-list">
-        {questions.length > 0 && (
-          <>
-            <h3 style={{ marginTop: '2rem', background: '#f0f4f8', padding: '10px 15px', borderRadius: '8px' }}>SECTION A: OBJECTIVE (40 QUESTIONS)</h3>
-            {mcqQuestions.map((q, i) => renderQuestionCard(q, questions.indexOf(q), `Question ${i + 1}`))}
-            
-            <h3 style={{ marginTop: '3rem', background: '#f0f4f8', padding: '10px 15px', borderRadius: '8px' }}>SECTION B: THEORY (6 QUESTIONS)</h3>
-            {theoryQuestions.map((q, i) => renderQuestionCard(q, questions.indexOf(q), `Question ${i + 1} (Theory)`))}
-          </>
-        )}
+        {paperSections.map((section) => {
+          const previousCount = paperSections
+            .slice(0, paperSections.findIndex((item) => item.key === section.key))
+            .reduce((sum, item) => sum + item.questions.length, 0);
+
+          return (
+            <section key={section.key} className="likely-paper-block">
+              <div className="likely-paper-block__head">
+                <div>
+                  <h3>{section.title}</h3>
+                  <p>{section.subtitle}</p>
+                </div>
+                <span className="likely-paper-block__badge">{section.questions.length} questions</span>
+              </div>
+              <div className="likely-paper-block__list">
+                {section.questions.map((question, index) =>
+                  renderQuestionCard(question, previousCount + index, `${section.short} Question ${index + 1}`)
+                )}
+              </div>
+            </section>
+          );
+        })}
       </div>
 
-      {!isSimulating && !!examHistory.length && (
+      {!isSimulating && examHistory.length > 0 && (
         <div style={{ marginTop: '40px', padding: '20px', background: '#f8fafc', borderRadius: '12px' }}>
-          <h3>📜 Past Papers History</h3>
+          <h3>Past Likely WASSCE Sessions</h3>
           <div style={{ display: 'grid', gap: '15px', marginTop: '15px' }}>
-          {examHistory.map(entry => (
-            <div 
-              key={entry.id} 
-              className="history-item-card" 
-              onClick={() => handleViewHistory(entry)}
-              style={{ 
-                padding: '15px', 
-                background: '#fff', 
-                borderRadius: '8px', 
-                border: '1px solid #e2e8f0', 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                cursor: 'pointer',
-                transition: 'transform 0.2s, box-shadow 0.2s'
-              }}
-              onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'; }}
-              onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
-            >
-              <div>
-                <strong style={{ display: 'block', fontSize: '1.1rem' }}>{entry.subject.replace(/_/g, ' ').toUpperCase()}</strong>
-                <span style={{ color: '#64748b' }}>{new Date(entry.created_at).toLocaleString()} • <span style={{ color: '#3b82f6' }}>View Results →</span></span>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: entry.percentage >= 50 ? '#10b981' : '#ef4444' }}>
-                  {entry.percentage}%
+            {examHistory.map((entry) => (
+              <div
+                key={entry.id}
+                className="history-item-card"
+                onClick={() => handleViewHistory(entry)}
+                style={{
+                  padding: '15px',
+                  background: '#fff',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                }}
+                onMouseOver={(event) => {
+                  event.currentTarget.style.transform = 'translateY(-2px)';
+                  event.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
+                }}
+                onMouseOut={(event) => {
+                  event.currentTarget.style.transform = 'none';
+                  event.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <div>
+                  <strong style={{ display: 'block', fontSize: '1.1rem' }}>{entry.subject.replace(/_/g, ' ').toUpperCase()}</strong>
+                  <span style={{ color: '#64748b' }}>{new Date(entry.created_at).toLocaleString()} • View Results →</span>
                 </div>
-                <span style={{ color: '#64748b' }}>{entry.score_obtained} / {entry.total_questions} pts</span>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: entry.percentage >= 50 ? '#10b981' : '#ef4444' }}>
+                    {entry.percentage}%
+                  </div>
+                  <span style={{ color: '#64748b' }}>{entry.score_obtained} / {entry.total_questions} pts</span>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
           </div>
         </div>
       )}
-
     </div>
   );
 }

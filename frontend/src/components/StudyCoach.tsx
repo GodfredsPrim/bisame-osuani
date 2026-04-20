@@ -359,7 +359,7 @@ export function StudyCoach({
             <textarea
               ref={textareaRef}
               className="gemini-textarea"
-              placeholder="Ask BisaME Tutor anything…"
+              placeholder="Ask fun2learn online anything..."
               value={input}
               onChange={e => setInput(e.target.value)}
               disabled={loading}
@@ -395,7 +395,7 @@ export function StudyCoach({
             </button>
           </div>
 
-          <p className="gemini-disclaimer">BisaME can make mistakes. Verify important answers.</p>
+          <p className="gemini-disclaimer">fun2learn online can make mistakes. Verify important answers.</p>
         </div>
       </div>
     </div>

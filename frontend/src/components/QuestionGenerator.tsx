@@ -104,6 +104,15 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
     }
   }, [selectedYear, subjects]);
 
+  // Auto-set numQuestions to 46 for WASSCE mock exams
+  useEffect(() => {
+    if (questionType === 'standard') {
+      setNumQuestions(46);
+    } else {
+      setNumQuestions(5);
+    }
+  }, [questionType]);
+
   const handleGenerate = async () => {
     if (!subject) {
       alert('Please select a subject');
@@ -126,7 +135,12 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
         [],
         semester
       );
-      setQuestions(result.questions);
+
+      const orderedQuestions = result.organized_papers
+        ? ['paper_1', 'paper_2', 'paper_3'].flatMap((key) => result.organized_papers?.[key] || [])
+        : result.questions;
+
+      setQuestions(orderedQuestions);
       setGenerationTime(result.generation_time);
       setGenerationMeta(result);
       setShowAnswers(false);
@@ -252,6 +266,31 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
     }
   };
 
+  const handleDownloadPDF = async () => {
+    if (!questions.length) return;
+    
+    try {
+      const currentSubjectName = subjects.find(s => s.id === subject)?.name || subject;
+      const blob = await questionsAPI.generatePDF({
+        subject_name: currentSubjectName,
+        questions,
+        organized_papers: generationMeta?.organized_papers,
+        year: selectedYear
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${currentSubjectName.replace(/\s+/g, '_')}_WAEC_Mock.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error('PDF Download failed:', err);
+      alert('Failed to generate professional PDF. Please try again.');
+    }
+  };
+
   useEffect(() => {
     const handleFullscreenChange = () => {
       if (isSimulating && !document.fullscreenElement && !examResult) {
@@ -336,8 +375,8 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
             ) : (
               <textarea
                 placeholder="Type your detailed answer here..."
-                rows={6}
-                style={{ width: '100%', marginTop: '15px', padding: '12px', border: '1px solid #cad7e6', borderRadius: '10px', fontFamily: 'inherit', fontSize: '1rem' }}
+                rows={12}
+                style={{ width: '100%', marginTop: '15px', padding: '15px', border: '2px solid #cad7e6', borderRadius: '12px', fontFamily: 'inherit', fontSize: '1.1rem', lineHeight: '1.6' }}
                 value={studentAnswers[globalIndex] || ''}
                 onChange={(e) => handleStudentAnswerChange(globalIndex, e.target.value)}
               />
@@ -371,6 +410,38 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
         )}
       </div>
     );
+  };
+
+  const paperNames: Record<string, string> = {
+    paper_1: 'Paper 1 — Multiple Choice',
+    paper_2: 'Paper 2 — Theory',
+    paper_3: 'Paper 3 — Practical / Structured',
+  };
+
+  const renderOrganizedQuestionSections = () => {
+    if (!generationMeta?.organized_papers) {
+      return questions.map((q, index) => renderQuestionCard(q, index, `Question ${index + 1}`));
+    }
+
+    let globalIndex = 0;
+    return ['paper_1', 'paper_2', 'paper_3'].map((paperKey) => {
+      const paperQuestions = generationMeta.organized_papers?.[paperKey];
+      if (!paperQuestions || paperQuestions.length === 0) {
+        return null;
+      }
+
+      const title = paperNames[paperKey] || paperKey.replace(/_/g, ' ').toUpperCase();
+      return (
+        <div key={paperKey} style={{ marginBottom: '30px' }}>
+          <h2 style={{ marginBottom: '15px' }}>{title}</h2>
+          {paperQuestions.map((q, idx) => {
+            const currentIndex = globalIndex;
+            globalIndex += 1;
+            return renderQuestionCard(q, currentIndex, `${title} — Question ${idx + 1}`);
+          })}
+        </div>
+      );
+    });
   };
 
   const renderHistory = () => (
@@ -563,6 +634,9 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
           <button onClick={() => {setIsPrintAnswerSheet(true); setShowAnswers(false); setTimeout(() => window.print(), 100);}} className="btn-secondary">
             📝 Print Answer Sheet Only
           </button>
+          <button onClick={handleDownloadPDF} className="btn-primary" style={{ backgroundColor: '#059669' }}>
+            📥 Download Professional WAEC PDF
+          </button>
         </div>
       )}
 
@@ -586,7 +660,7 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
       )}
 
       <div className="questions-list">
-        {questions.map((q, index) => renderQuestionCard(q, index, `Question ${index + 1}`))}
+        {renderOrganizedQuestionSections()}
       </div>
 
       {!isSimulating && examHistory.length > 0 && renderHistory()}

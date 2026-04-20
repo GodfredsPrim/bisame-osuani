@@ -327,8 +327,8 @@ class AuthService:
         # Create virtual admin user
         admin = AuthUser(
             id=0,
-            full_name="BisaME Administrator",
-            email="admin@bisame.online",
+            full_name="fun2learn Online Administrator",
+            email="admin@fun2learn.online",
             provider="static",
             subscription_status="active",
             subscription_expires_at=None,
@@ -343,8 +343,8 @@ class AuthService:
         # Create virtual admin user
         admin = AuthUser(
             id=0,
-            full_name="BisaME Administrator",
-            email="admin@bisame.online",
+            full_name="fun2learn Online Administrator",
+            email="admin@fun2learn.online",
             provider="static",
             subscription_status="active",
             subscription_expires_at=None,
@@ -442,8 +442,8 @@ class AuthService:
         if is_static:
             return AuthUser(
                 id=0,
-                full_name="BisaME Administrator",
-                email="admin@bisame.online",
+                full_name="fun2learn Online Administrator",
+                email="admin@fun2learn.online",
                 provider="static",
                 subscription_status="active",
                 subscription_expires_at=None,

@@ -18,6 +18,14 @@ type AuthStep = 'auth' | 'verify_code' | 'active'
 const GUEST_CHAT_LIMIT = 2
 const CHAT_TARGET: AuthTarget = 'study'
 const GOOGLE_SCRIPT_ID = 'google-identity-services'
+const STORAGE_KEYS = {
+  theme: 'fun2learn_theme',
+  legacyTheme: 'bisame_theme',
+  guestChats: 'fun2learn_guest_chats_used',
+  legacyGuestChats: 'bisame_guest_chats_used',
+  accessToken: 'fun2learn_access_token',
+  legacyAccessToken: 'bisame_access_token',
+} as const
 
 const TAB_COPY: Record<AuthTarget, { label: string; reason: string; icon: string }> = {
   study: {
@@ -99,7 +107,11 @@ const TicketIcon = () => (
 
 function App() {
   const [theme, setTheme] = React.useState<'light' | 'dark'>(() => {
-    return (window.localStorage.getItem('bisame_theme') as 'light' | 'dark') || 'light';
+    return (
+      (window.localStorage.getItem(STORAGE_KEYS.theme) as 'light' | 'dark') ||
+      (window.localStorage.getItem(STORAGE_KEYS.legacyTheme) as 'light' | 'dark') ||
+      'light'
+    );
   });
   const [activeTab, setActiveTab] = React.useState<AppTab>('study')
   const [isExamSimulating, setIsExamSimulating] = React.useState(false)
@@ -120,6 +132,7 @@ function App() {
     passkey_enabled: false,
   })
   const [authLoading, setAuthLoading] = React.useState(false)
+  const [isScrolled, setIsScrolled] = React.useState(false)
   const [googleReady, setGoogleReady] = React.useState(false)
   const [accessCode, setAccessCode] = React.useState('')
   const [codeError, setCodeError] = React.useState('')
@@ -142,7 +155,7 @@ function App() {
 
   React.useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    window.localStorage.setItem('bisame_theme', theme);
+    window.localStorage.setItem(STORAGE_KEYS.theme, theme);
   }, [theme]);
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -152,6 +165,14 @@ function App() {
     if (tab === 'admin') return Boolean(user?.is_admin)
     return hasActiveSubscription(user)
   }
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 30)
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   React.useEffect(() => {
     questionsAPI.loadDeferred().catch((err) => {
@@ -168,12 +189,12 @@ function App() {
         console.error('Failed to load auth config', err)
       }
 
-      const guestUsage = window.localStorage.getItem('bisame_guest_chats_used')
+      const guestUsage = window.localStorage.getItem(STORAGE_KEYS.guestChats) || window.localStorage.getItem(STORAGE_KEYS.legacyGuestChats)
       if (guestUsage) {
         setGuestChatsUsed(Number(guestUsage) || 0)
       }
 
-      const storedToken = window.localStorage.getItem('bisame_access_token')
+      const storedToken = window.localStorage.getItem(STORAGE_KEYS.accessToken) || window.localStorage.getItem(STORAGE_KEYS.legacyAccessToken)
       if (!storedToken) {
         return
       }
@@ -200,7 +221,8 @@ function App() {
         }
       } catch (err) {
         console.error('Stored session is invalid', err)
-        window.localStorage.removeItem('bisame_access_token')
+        window.localStorage.removeItem(STORAGE_KEYS.accessToken)
+        window.localStorage.removeItem(STORAGE_KEYS.legacyAccessToken)
         setAuthToken(null)
       }
     }
@@ -284,8 +306,8 @@ function App() {
   }
 
   const persistSession = (accessToken: string, user: AuthUser) => {
-    window.localStorage.setItem('bisame_access_token', accessToken)
-    window.localStorage.setItem('bisame_guest_chats_used', '0')
+    window.localStorage.setItem(STORAGE_KEYS.accessToken, accessToken)
+    window.localStorage.setItem(STORAGE_KEYS.guestChats, '0')
     setAuthToken(accessToken)
     setAccount(user)
     setGuestChatsUsed(0)
@@ -423,7 +445,8 @@ function App() {
   }
 
   const handleLogout = () => {
-    window.localStorage.removeItem('bisame_access_token')
+    window.localStorage.removeItem(STORAGE_KEYS.accessToken)
+    window.localStorage.removeItem(STORAGE_KEYS.legacyAccessToken)
     setAuthToken(null)
     setAccount(null)
     setActiveTab('study')
@@ -442,7 +465,7 @@ function App() {
 
     const nextValue = guestChatsUsed + 1
     setGuestChatsUsed(nextValue)
-    window.localStorage.setItem('bisame_guest_chats_used', String(nextValue))
+    window.localStorage.setItem(STORAGE_KEYS.guestChats, String(nextValue))
     return true
   }
 
@@ -459,16 +482,24 @@ function App() {
   return (
     <div className={`app app-shell ${isExamSimulating ? 'exam-mode' : ''}`}>
       {!isExamSimulating && (
-        <header className="topbar">
+        <header className={`topbar ${isScrolled ? 'topbar--scrolled' : ''}`}>
           <div className="topbar__brand">
-            <div className="brand-mark">B</div>
-            <div>
-              <strong>BisaME</strong>
-              <span>{activeTab === 'admin' ? 'Administrative control center' : 'Study companion for SHS learners'}</span>
+            <div className="brand-mark">F2</div>
+            <div className="brand-copy">
+              <strong className="brand-title">
+                fun2learn <span>online</span>
+              </strong>
+              <span>{activeTab === 'admin' ? 'Administrative control center' : 'Modern SHS exam prep for confident learners'}</span>
             </div>
           </div>
 
-          {!(account?.is_admin && activeTab === 'admin') ? (
+          {account?.is_admin ? (
+            <nav className="topbar__nav">
+              <button className="topbar__nav-btn active" onClick={() => setActiveTab('admin')}>
+                <span className="nav-icon">🛡️</span>Administrative Dashboard
+              </button>
+            </nav>
+          ) : (
             <nav className="topbar__nav">
               <button className={`topbar__nav-btn ${activeTab === 'study' ? 'active' : ''}`} onClick={() => setActiveTab('study')}>
                 <span className="nav-icon">🧠</span>Study with AI
@@ -493,17 +524,6 @@ function App() {
               </button>
               <button className={`topbar__nav-btn ${activeTab === 'history' ? 'active' : ''}`} onClick={() => openAuthGate('history')}>
                 <span className="nav-icon">🕒</span>History
-              </button>
-              {account?.is_admin && (
-                <button className="topbar__nav-btn" onClick={() => setActiveTab('admin')}>
-                  <span className="nav-icon">🛡️</span>Administration
-                </button>
-              )}
-            </nav>
-          ) : (
-            <nav className="topbar__nav">
-              <button className="topbar__nav-btn active" onClick={() => setActiveTab('admin')}>
-                <span className="nav-icon">🛡️</span>Administrative Dashboard
               </button>
             </nav>
           )}
@@ -575,8 +595,8 @@ function App() {
                 {/* Header */}
                 <div className="authv2__header">
                   <div className="authv2__logo">
-                    <div className="authv2__logo-mark">B</div>
-                    <span>BisaME</span>
+                    <div className="authv2__logo-mark">F2</div>
+                    <span>fun2learn online</span>
                   </div>
                   <h2 className="authv2__title">
                     {authMode === 'signup' ? 'Create your account' : 'Welcome back'}
@@ -718,7 +738,7 @@ function App() {
                         className="authv2__input authv2__input--code"
                         style={{ marginBottom: '10px' }}
                         type="text"
-                        placeholder="BISAME-XXXX"
+                        placeholder="FUN2LEARN-XXXX"
                         value={accessCode}
                         onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
                       />
@@ -787,7 +807,7 @@ function App() {
               </div>
               <h2 className="authv2__title">Administrative Access</h2>
               <p className="authv2__subtitle">
-                Please enter the secure <strong>Admin Access Code</strong> to manage the BisaME system.
+                Please enter the secure <strong>Admin Access Code</strong> to manage the fun2learn online system.
               </p>
             </div>
 

@@ -1,8 +1,10 @@
 ﻿import type { MockExamCreateResponse } from './api'
 
-const PRACTICE_QUEUE_KEY = 'bisame.practice.sync.queue'
-const EXAM_PACKS_KEY = 'bisame.mock.exam.packs'
-export const OFFLINE_SYNC_EVENT = 'bisame:offline-sync-updated'
+const PRACTICE_QUEUE_KEY = 'fun2learn.practice.sync.queue'
+const EXAM_PACKS_KEY = 'fun2learn.mock.exam.packs'
+export const OFFLINE_SYNC_EVENT = 'fun2learn:offline-sync-updated'
+const LEGACY_PRACTICE_QUEUE_KEY = 'bisame.practice.sync.queue'
+const LEGACY_EXAM_PACKS_KEY = 'bisame.mock.exam.packs'
 
 export interface OfflinePracticePayload {
   studentId?: string
@@ -33,7 +35,8 @@ function readJson<T>(key: string, fallback: T): T {
     return fallback
   }
   try {
-    const raw = window.localStorage.getItem(key)
+    const legacyKey = key === PRACTICE_QUEUE_KEY ? LEGACY_PRACTICE_QUEUE_KEY : key === EXAM_PACKS_KEY ? LEGACY_EXAM_PACKS_KEY : null
+    const raw = window.localStorage.getItem(key) || (legacyKey ? window.localStorage.getItem(legacyKey) : null)
     if (!raw) {
       return fallback
     }

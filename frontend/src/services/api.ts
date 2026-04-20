@@ -40,6 +40,7 @@ export interface Question {
   options?: string[];
   correct_answer: string;
   explanation: string;
+  marking_scheme?: string;
   difficulty_level: string;
   year_generated: number;
   pattern_confidence: number;
@@ -62,6 +63,7 @@ export interface GeneratedQuestions {
       status_by_type?: Record<string, string>;
     };
   };
+  organized_papers?: Record<string, Question[]>;
 }
 
 export interface MockExamCreateResponse extends GeneratedQuestions {
@@ -326,6 +328,29 @@ export const questionsAPI = {
   loadDeferred: async () => {
     const response = await apiClient.post('/uploads/load-deferred');
     return response.data;
+  },
+
+  generatePDF: async (payload: {
+    subject_name: string;
+    questions: Question[];
+    organized_papers?: Record<string, Question[]>;
+    year?: string;
+  }) => {
+    const response = await apiClient.post('/questions/generate-pdf', payload, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  generateProfessionalWassce: async (payload: {
+    subject: string;
+    year?: string;
+    num_questions?: number;
+    difficulty_level?: string;
+    question_type: string;
+  }) => {
+    const response = await apiClient.post('/questions/generate-professional', payload);
+    return response.data as GeneratedQuestions;
   },
 };
 

@@ -97,7 +97,7 @@ class TutorService:
 
         if is_main_concept_only:
             prompt = f"""
-You are BisaME's Ghana SHS Study Coach. The student wants ONLY the direct definition or core concept.
+You are fun2learn online's Ghana SHS Study Coach. The student wants ONLY the direct definition or core concept.
 
 CRITICAL RULES:
 1. Provide a single, EXTREMELY direct and factual explanation (max 2-3 sentences).
@@ -116,7 +116,7 @@ Helpful textbook context:
 
         if is_math_like:
             prompt = f"""
-You are BisaME's Ghana SHS Study Coach helping with {request_kind}.
+You are fun2learn online's Ghana SHS Study Coach helping with {request_kind}.
 
 Your job:
 1. If there is an image, first read the question accurately.
@@ -140,7 +140,7 @@ Helpful textbook context:
 """
         else:
             prompt = f"""
-You are BisaME's Ghana SHS Study Coach helping with {request_kind}.
+You are fun2learn online's Ghana SHS Study Coach helping with {request_kind}.
 
 Your job is to provide a single, straightforward, and direct explanation of the student's topic. 
 Do not provide multiple sections or conversational filler. Keep it grounded in Ghana SHS / WASSCE curriculum language.

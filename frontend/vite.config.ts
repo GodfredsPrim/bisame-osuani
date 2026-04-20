@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'BisaME Exam Prep',
-        short_name: 'BisaME',
+        name: 'fun2learn online',
+        short_name: 'fun2learn',
         description: 'Premium AI-powered WASSCE exam prep simulator and SHS study coach.',
         theme_color: '#0b7a4b',
         background_color: '#ffffff',
