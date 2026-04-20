@@ -1,10 +1,10 @@
-﻿import type { MockExamCreateResponse } from './api'
+import type { MockExamCreateResponse } from './api'
 
 const PRACTICE_QUEUE_KEY = 'fun2learn.practice.sync.queue'
 const EXAM_PACKS_KEY = 'fun2learn.mock.exam.packs'
 export const OFFLINE_SYNC_EVENT = 'fun2learn:offline-sync-updated'
-const LEGACY_PRACTICE_QUEUE_KEY = 'bisame.practice.sync.queue'
-const LEGACY_EXAM_PACKS_KEY = 'bisame.mock.exam.packs'
+const LEGACY_PRACTICE_QUEUE_KEY = 'f2.practice.sync.old'
+const LEGACY_EXAM_PACKS_KEY = 'f2.mock.exam.old'
 
 export interface OfflinePracticePayload {
   studentId?: string
