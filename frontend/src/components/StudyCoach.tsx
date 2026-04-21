@@ -345,36 +345,39 @@ export function StudyCoach({
 
           <div className="gemini-input-bar">
             {/* Subject pill with search */}
-            <div className="gemini-subject-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <select
-                className="gemini-subject"
-                value={subject}
-                onChange={e => setSubject(e.target.value)}
-                title="Choose subject"
-                style={{ flex: 1 }}
-              >
-                <option value="General">General</option>
-                {subjects
-                  .filter(s => s.name.toLowerCase().includes(subjectSearch.toLowerCase()))
-                  .map(s => (
-                    <option key={s.id} value={s.id}>{s.name.replace(/_/g, ' ')}</option>
-                  ))
-                }
-              </select>
+            <div className="gemini-subject-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
               <input 
                 type="text"
-                placeholder="Search subject..."
+                placeholder="🔍 Subject Search..."
                 value={subjectSearch}
                 onChange={e => setSubjectSearch(e.target.value)}
                 className="chat-input"
                 style={{
-                  width: '120px',
-                  padding: '6px 12px',
+                  width: '140px',
+                  padding: '8px 12px',
                   fontSize: '0.85rem',
-                  borderRadius: '10px',
-                  border: '1px solid var(--border)'
+                  borderRadius: '12px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface-soft)'
                 }}
               />
+              <select
+                className="gemini-subject"
+                value={subject}
+                onChange={e => setSubject(e.target.value)}
+                title="Select subject"
+                style={{ flex: 1, height: '42px', borderRadius: '12px' }}
+              >
+                <option value="General">General (Global AI)</option>
+                {subjects
+                  .filter(s => s.name.toLowerCase().includes(subjectSearch.toLowerCase()))
+                  .map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name.replace(/_/g, ' ')} {subjectSearch.trim() ? `(${s.year})` : ''}
+                    </option>
+                  ))
+                }
+              </select>
             </div>
 
             <textarea

@@ -68,13 +68,15 @@ export function AnalysisDashboard() {
   }, [subjects]);
 
   const filteredSubjects = useMemo(() => {
+    // If searching, bypass year filter for a global search experience
+    if (subjectSearch.trim()) {
+      const term = subjectSearch.toLowerCase();
+      return subjects.filter(s => s.name.toLowerCase().includes(term));
+    }
+
     let list = selectedYear === 'Year 3'
       ? Array.from(new Map(subjects.map((item) => [item.name, item])).values())
       : subjects.filter((item) => item.year === selectedYear);
-    
-    if (subjectSearch.trim()) {
-      list = list.filter(s => s.name.toLowerCase().includes(subjectSearch.toLowerCase()));
-    }
     
     return list;
   }, [selectedYear, subjects, subjectSearch]);
@@ -445,25 +447,40 @@ export function AnalysisDashboard() {
                 ))}
               </select>
             </div>
-            <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label style={{ marginBottom: 0 }}>Select Subject</label>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label htmlFor="subject-search-analysis">Search & Select Subject</label>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
                 <input 
+                  id="subject-search-analysis"
                   type="text" 
-                  placeholder="Search..." 
+                  placeholder="🔍 Type to search all subjects..." 
                   value={subjectSearch}
                   onChange={(e) => setSubjectSearch(e.target.value)}
                   className="chat-input"
-                  style={{ width: '120px', padding: '4px 10px', fontSize: '0.85rem' }}
+                  style={{ flex: 1, padding: '10px 14px', fontSize: '0.95rem' }}
                 />
+                {subjectSearch && (
+                  <button 
+                    onClick={() => setSubjectSearch('')}
+                    style={{ background: 'none', border: 'none', color: 'var(--ink-500)', cursor: 'pointer', fontWeight: 800 }}
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
-              <select value={subject} onChange={(event) => setSubject(event.target.value)}>
+              <select 
+                value={subject} 
+                onChange={(event) => setSubject(event.target.value)}
+                style={{ width: '100%', height: '45px' }}
+              >
                 {filteredSubjects.length > 0 ? (
                   filteredSubjects.map((item) => (
-                    <option key={item.id} value={item.id}>{item.name.replace(/_/g, ' ')}</option>
+                    <option key={item.id} value={item.id}>
+                      {item.name.replace(/_/g, ' ')} {subjectSearch.trim() ? `(${item.year})` : ''}
+                    </option>
                   ))
                 ) : (
-                  <option disabled>No subjects found</option>
+                  <option disabled>No subjects found for "{subjectSearch}"</option>
                 )}
               </select>
             </div>

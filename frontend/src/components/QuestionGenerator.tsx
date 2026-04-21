@@ -585,30 +585,42 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
               </select>
             </div>
 
-            <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <label style={{ marginBottom: 0 }}>Choose Subject:</label>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label htmlFor="subject-search">Search & Select Subject:</label>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
                 <input 
+                  id="subject-search"
                   type="text" 
-                  placeholder="Search..." 
+                  placeholder="🔍 Type to search all subjects..." 
                   value={subjectSearch}
                   onChange={(e) => setSubjectSearch(e.target.value)}
                   className="chat-input"
-                  style={{ width: '120px', padding: '4px 10px', fontSize: '0.85rem' }}
+                  style={{ flex: 1, padding: '10px 14px', fontSize: '0.95rem' }}
                 />
+                {subjectSearch && (
+                  <button 
+                    onClick={() => setSubjectSearch('')}
+                    style={{ background: 'none', border: 'none', color: 'var(--ink-500)', cursor: 'pointer', fontWeight: 800 }}
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
               <select
                 id="subject"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 disabled={loadingSubjects}
+                style={{ width: '100%', height: '45px' }}
               >
                 {filteredSubjects.length > 0 ? (
                   filteredSubjects.map((subj) => (
-                    <option key={subj.id} value={subj.id}>{subj.name.replace(/_/g, ' ')}</option>
+                    <option key={subj.id} value={subj.id}>
+                      {subj.name.replace(/_/g, ' ')} {subjectSearch.trim() ? `(${subj.year})` : ''}
+                    </option>
                   ))
                 ) : (
-                  <option disabled>No subjects found</option>
+                  <option disabled>No subjects found for "{subjectSearch}"</option>
                 )}
               </select>
             </div>
