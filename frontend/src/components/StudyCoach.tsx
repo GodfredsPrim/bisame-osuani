@@ -345,12 +345,13 @@ export function StudyCoach({
 
           <div className="gemini-input-bar">
             {/* Subject pill with search */}
-            <div className="gemini-subject-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <div className="gemini-subject-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <select
                 className="gemini-subject"
                 value={subject}
                 onChange={e => setSubject(e.target.value)}
                 title="Choose subject"
+                style={{ flex: 1 }}
               >
                 <option value="General">General</option>
                 {subjects
@@ -362,18 +363,16 @@ export function StudyCoach({
               </select>
               <input 
                 type="text"
-                placeholder="🔍"
+                placeholder="Search subject..."
                 value={subjectSearch}
                 onChange={e => setSubjectSearch(e.target.value)}
-                className="subject-search-pill"
+                className="chat-input"
                 style={{
-                  width: '30px',
-                  border: 'none',
-                  background: 'transparent',
-                  padding: '0 5px',
-                  fontSize: '0.8rem',
-                  outline: 'none',
-                  cursor: 'pointer'
+                  width: '120px',
+                  padding: '6px 12px',
+                  fontSize: '0.85rem',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)'
                 }}
               />
             </div>
