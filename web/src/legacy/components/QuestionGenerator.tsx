@@ -503,7 +503,7 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
   if (showHistoryOnly && !isViewingHistory) return renderHistory();
 
   return (
-    <div className={`generator-section ${isSimulating ? 'simulating' : ''}`}>
+    <div className={`generator-section ${isSimulating ? 'simulating' : ''} fade-in-up`}>
       <div className="generator-hero">
         <h2>
           {isViewingHistory ? '📜 Historical Practice Result' : (isSimulating ? '📝 Official Mock Exam — Restricted Mode' : 'Generate Question')}
@@ -587,7 +587,7 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
 
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
               <label htmlFor="subject-search">Search & Select Subject:</label>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+              <div className="generator-search-row" style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
                 <input 
                   id="subject-search"
                   type="text" 
@@ -663,7 +663,7 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
             </div>
           </div>
 
-          <div style={{display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap'}}>
+          <div className="generator-actions" style={{display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap'}}>
             <button onClick={handleGenerate} disabled={loading || loadingSubjects} className="btn-primary">
               {loading ? 'Generating...' : '🚀 Generate Practice'}
             </button>

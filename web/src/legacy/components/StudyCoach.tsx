@@ -81,8 +81,8 @@ export function StudyCoach({
   onRequireAuth,
   onConsumeGuestChat,
   userId,
-}: StudyCoachProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+}: StudyCoachProps) {  console.log('StudyCoach component is rendering');
+    const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState<File | null>(null);
@@ -272,11 +272,17 @@ export function StudyCoach({
         {/* Welcome screen — shown when no messages */}
         {!hasMessages && (
           <div className="gemini-welcome">
+            <div className="gemini-welcome__eyebrow">Personal AI study coach</div>
             <div className="gemini-welcome__logo">
               <div className="gemini-welcome__mark">Fun2Learn AI</div>
             </div>
             <h1 className="gemini-welcome__title">How can I help you study?</h1>
             <p className="gemini-welcome__sub">Ask a question, upload an image, or pick a starter below.</p>
+            <div className="gemini-welcome__highlights">
+              <span>Step-by-step help</span>
+              <span>Exam-ready explanations</span>
+              <span>Image interpretation</span>
+            </div>
 
             <div className="gemini-starters">
               {STARTERS.map(s => (

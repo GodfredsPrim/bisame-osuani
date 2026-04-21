@@ -1,16 +1,18 @@
+"use client";
+
 import React, { useState, useEffect } from 'react'
-import './index.css'
 import { QuestionGenerator } from './components/QuestionGenerator'
 import StudyCoach from './components/StudyCoach'
-import LiveQuiz from './components/LiveQuiz'
 import { AnalysisDashboard } from './components/AnalysisDashboard'
 import ResourceFetcher from './components/ResourceFetcher'
-import { AdminDashboard } from './components/AdminDashboard'
-import { GlobalLeaderboard } from './components/Leaderboard'
-import { CompetitionPortal } from './components/CompetitionPortal'
+import { LiveQuiz } from './components/LiveQuiz'
 import { authAPI, adminAPI, questionsAPI, setAuthToken, type AuthConfigResponse, type AuthUser } from './services/api'
+import { Transition } from '@headlessui/react'
+import { ThemeProvider, createTheme } from '@mui/material/styles'
+import { CssBaseline, Button, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Box } from '@mui/material'
+import { Menu, Close, Brightness4, Brightness7, School, Create, Assessment, LibraryBooks, Quiz, History } from '@mui/icons-material'
 
-type AppTab = 'study' | 'generator' | 'live_quiz' | 'competitions' | 'analysis' | 'resources' | 'leaderboard' | 'admin' | 'history'
+type AppTab = 'study' | 'generator' | 'analysis' | 'resources' | 'quiz' | 'history'
 type AuthTarget = AppTab
 type AuthMode = 'login' | 'signup'
 type AuthStep = 'auth' | 'verify_code' | 'active'
@@ -38,40 +40,83 @@ const TAB_COPY: Record<AuthTarget, { label: string; reason: string; icon: string
     icon: '📝',
     reason: 'Save generated practice sets, revisit answers, and keep your progress organised.',
   },
-  live_quiz: {
-    label: 'Quiz Challenge',
-    icon: '⚡',
-    reason: 'Join timed challenges, keep scores, and track performance with your own account.',
-  },
-  competitions: {
-    label: 'Announcements',
-    icon: '📢',
-    reason: 'View current announcements, rewards, and competition updates.',
-  },
   analysis: {
     label: 'Likely WASSCE Questions',
     icon: '📊',
     reason: 'Unlock deeper pattern insights and keep your personal exam-prep history.',
   },
   resources: {
-    label: 'Library',
+    label: 'Digital Library',
     icon: '📚',
     reason: 'Download and manage your learning resources from one account.',
   },
-  leaderboard: {
-    label: 'Leaderboard',
-    icon: '🏆',
-    reason: 'Compete globally and track your ranking.',
-  },
-  admin: {
-    label: 'Administration',
-    icon: '🛡️',
-    reason: 'Manage system settings and user accounts.',
+  quiz: {
+    label: 'Live Quiz Challenge',
+    icon: '🎯',
+    reason: 'Join live quiz challenges and compete with other students in real-time.',
   },
   history: {
-    label: 'History',
-    icon: '🕒',
-    reason: 'Review your past generated questions and session analysis.',
+    label: 'Practice History',
+    icon: '📖',
+    reason: 'Review your past practice sessions and track your learning progress.',
+  },
+}
+
+const TAB_META: Record<AppTab, {
+  title: string
+  shortTitle: string
+  detail: string
+  badge: string
+  accent: string
+  icon: React.ElementType
+}> = {
+  study: {
+    title: 'Study with AI',
+    shortTitle: 'Study',
+    detail: 'Adaptive coaching with guided explanations and image support.',
+    badge: 'AI',
+    accent: '#0b7a4b',
+    icon: School,
+  },
+  generator: {
+    title: 'Practice Questions',
+    shortTitle: 'Practice',
+    detail: 'Generate exam-style questions with marking schemes and exports.',
+    badge: 'PQ',
+    accent: '#d97706',
+    icon: Create,
+  },
+  analysis: {
+    title: 'Likely WASSCE',
+    shortTitle: 'Analysis',
+    detail: 'Surface likely themes and exam patterns from historical materials.',
+    badge: 'AN',
+    accent: '#7c3aed',
+    icon: Assessment,
+  },
+  resources: {
+    title: 'Digital Library',
+    shortTitle: 'Library',
+    detail: 'Find books, articles, and curated learning resources in one place.',
+    badge: 'LB',
+    accent: '#0f766e',
+    icon: LibraryBooks,
+  },
+  quiz: {
+    title: 'Live Quiz Challenge',
+    shortTitle: 'Quiz',
+    detail: 'Challenge yourself with live quizzes and compete with other students.',
+    badge: 'QZ',
+    accent: '#f59e0b',
+    icon: Quiz,
+  },
+  history: {
+    title: 'Practice History',
+    shortTitle: 'History',
+    detail: 'Review your past practice sessions and track your progress.',
+    badge: 'HS',
+    accent: '#8b5cf6',
+    icon: History,
   },
 }
 
@@ -113,13 +158,6 @@ function App() {
       'light'
     );
   });
-  const [isDiscoveryPlaying, setIsDiscoveryPlaying] = useState(true);
-  
-  useEffect(() => {
-    // Discovery slideshow plays once for 10 seconds total to show all tabs clearly
-    const timer = setTimeout(() => setIsDiscoveryPlaying(false), 12000);
-    return () => clearTimeout(timer);
-  }, []);
   const [activeTab, setActiveTab] = React.useState<AppTab>('study')
   const [isExamSimulating, setIsExamSimulating] = React.useState(false)
   const [account, setAccount] = React.useState<AuthUser | null>(null)
@@ -162,16 +200,25 @@ function App() {
   const hasActiveSubscription = (user: AuthUser | null) =>
     Boolean(user?.is_admin || user?.subscription_status === 'active')
 
+  const activeTabCopy = TAB_COPY[activeTab as AuthTarget]
+  const firstName = account?.full_name?.split(' ')[0] || 'Student'
+
   React.useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     window.localStorage.setItem(STORAGE_KEYS.theme, theme);
   }, [theme]);
 
+  React.useEffect(() => {
+    document.body.style.overflow = mobileMenuOpen ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileMenuOpen])
+
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
   const canAccessTab = (tab: AppTab, user: AuthUser | null) => {
     if (tab === 'study') return true
-    if (tab === 'admin') return Boolean(user?.is_admin)
     return hasActiveSubscription(user)
   }
 
@@ -219,7 +266,7 @@ function App() {
         if (user.is_admin) {
           setAuthStep('auth') // Reset step
           setAuthOpen(false)
-          setActiveTab('admin')
+          setActiveTab('study')
         } else if (user.subscription_status === 'active') {
           try {
             const sub = await authAPI.getSubscription()
@@ -290,7 +337,7 @@ function App() {
     const checkHash = () => {
       if (window.location.hash === '#admin') {
         if (account?.is_admin) {
-          setActiveTab('admin');
+          setActiveTab('study');
         } else {
           setAdminAuthOpen(true);
         }
@@ -326,7 +373,7 @@ function App() {
     // Admins bypass subscription verification and go to dashboard
     if (user.is_admin) {
       setAuthOpen(false)
-      setActiveTab('admin')
+      setActiveTab('study')
       return
     }
 
@@ -380,7 +427,7 @@ function App() {
       persistSession(result.access_token, result.user)
       setAdminAuthOpen(false)
       setAdminSecretIn('')
-      setActiveTab('admin')
+      setActiveTab('study')
     } catch (err: any) {
       setAdminAuthError(err?.response?.data?.detail || 'Invalid admin access code.')
     } finally {
@@ -487,6 +534,15 @@ function App() {
   }
 
   const guestChatsRemaining = Math.max(0, GUEST_CHAT_LIMIT - guestChatsUsed)
+  const mobileStatus = account?.is_admin
+    ? 'Administrative access enabled'
+    : account
+      ? hasActiveSubscription(account)
+        ? subDaysLeft !== null
+          ? `${subDaysLeft} day${subDaysLeft === 1 ? '' : 's'} remaining`
+          : 'Premium active'
+        : 'Free account'
+      : `${guestChatsRemaining} free chats left`
 
   const isSubscribed = account?.subscription_status === 'active'
 
@@ -496,61 +552,92 @@ function App() {
     }
   }, [activeTab, account])
 
+  const muiTheme = createTheme({
+    palette: {
+      mode: theme,
+      primary: {
+        main: '#0b7a4b', // Ghana green
+      },
+      secondary: {
+        main: '#c61f1f', // Ghana red
+      },
+      warning: {
+        main: '#e1a310', // Ghana gold
+      },
+      background: {
+        default: theme === 'dark' ? '#111827' : '#ffffff',
+        paper: theme === 'dark' ? '#1a2433' : '#ffffff',
+      },
+    },
+    typography: {
+      fontFamily: "'Manrope', sans-serif",
+    },
+    shape: {
+      borderRadius: 12,
+    },
+  });
+
+  const visibleTabs: AppTab[] = ['study', 'generator', 'analysis', 'resources']
+
+  const activeMeta = TAB_META[activeTab]
+  const ActiveIcon = activeMeta.icon
+
   return (
-    <div className={`app app-shell ${isExamSimulating ? 'exam-mode' : ''} ${mobileMenuOpen ? 'drawer-open' : ''}`}>
+    <ThemeProvider theme={muiTheme}>
+      <CssBaseline />
+      <div className={`app app-shell ${isExamSimulating ? 'exam-mode' : ''} ${mobileMenuOpen ? 'drawer-open' : ''}`}>
       <div className="topbar-trigger"></div>
       {!isExamSimulating && (
         <header className={`topbar ${isScrolled ? 'topbar--scrolled' : ''}`}>
           <div className="topbar__inner">
             <div className="topbar__left">
-              <div className="topbar__brand">
-                <div className="brand-mark">F2L</div>
+              <div
+                className="topbar__brand"
+                onClick={() => setActiveTab('study')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setActiveTab('study')
+                  }
+                }}
+              >
+                <div className="brand-mark">SHS</div>
                 <div className="brand-copy">
                   <strong className="brand-title">
-                    fun2learn <span>online</span>
+                    Ghana SHS <span>AI Generator</span>
                   </strong>
                 </div>
               </div>
             </div>
 
             <nav className="topbar__center desktop-only">
-              {account?.is_admin ? (
-                <button className={`nav-link ${activeTab === 'admin' ? 'active' : ''}`} onClick={() => setActiveTab('admin')}>
-                  <span className="nav-icon">🛡️</span>
-                  Admin <span className="nav-full-text">Dashboard</span>
-                </button>
-              ) : (
-                <>
-                  <button className={`nav-link ${activeTab === 'study' ? 'active' : ''} ${isDiscoveryPlaying ? 'discovery-reveal' : ''}`} style={{ animationDelay: '0.2s' }} onClick={() => setActiveTab('study')}>
-                    <span className="nav-icon">🧠</span> Study <span className="nav-full-text">with AI</span>
-                  </button>
-                  <button className={`nav-link ${activeTab === 'generator' ? 'active' : ''} ${isDiscoveryPlaying ? 'discovery-reveal' : ''}`} style={{ animationDelay: '1.2s' }} onClick={() => openAuthGate('generator')}>
-                    <span className="nav-icon">📝</span> Practice <span className="nav-full-text">Questions</span>
-                  </button>
-                  <button className={`nav-link ${activeTab === 'analysis' ? 'active' : ''} ${isDiscoveryPlaying ? 'discovery-reveal' : ''}`} style={{ animationDelay: '2.2s' }} onClick={() => openAuthGate('analysis')}>
-                    <span className="nav-icon">📊</span> Likely WASSCE <span className="nav-full-text">Questions</span>
-                  </button>
-                  <button className={`nav-link ${activeTab === 'live_quiz' ? 'active' : ''} ${isDiscoveryPlaying ? 'discovery-reveal' : ''}`} style={{ animationDelay: '3.2s' }} onClick={() => openAuthGate('live_quiz')}>
-                    <span className="nav-icon">⚡</span> Quiz <span className="nav-full-text">Challenge</span>
-                  </button>
-                  <button className={`nav-link ${activeTab === 'competitions' ? 'active' : ''} ${isDiscoveryPlaying ? 'discovery-reveal' : ''}`} style={{ animationDelay: '4.2s' }} onClick={() => openAuthGate('competitions')}>
-                    <span className="nav-icon">📰</span> News <span className="nav-full-text">& Updates</span>
-                  </button>
-                  <button className={`nav-link ${activeTab === 'resources' ? 'active' : ''} ${isDiscoveryPlaying ? 'discovery-reveal' : ''}`} style={{ animationDelay: '5.2s' }} onClick={() => openAuthGate('resources')}>
-                    <span className="nav-icon">📚</span> Digital <span className="nav-full-text">Library</span>
-                  </button>
-                  <button className={`nav-link ${activeTab === 'history' ? 'active' : ''} ${isDiscoveryPlaying ? 'discovery-reveal' : ''}`} style={{ animationDelay: '6.2s' }} onClick={() => openAuthGate('history')}>
-                    <span className="nav-icon">🕒</span> Study <span className="nav-full-text">History</span>
-                  </button>
-                </>
-              )}
+              <button className={`nav-link ${activeTab === 'study' ? 'active' : ''}`} onClick={() => setActiveTab('study')}>
+                <span className="nav-icon">🧠</span> Study <span className="nav-full-text">with AI</span>
+              </button>
+              <button className={`nav-link ${activeTab === 'generator' ? 'active' : ''}`} onClick={() => openAuthGate('generator')}>
+                <span className="nav-icon">📝</span> Practice <span className="nav-full-text">Questions</span>
+              </button>
+              <button className={`nav-link ${activeTab === 'analysis' ? 'active' : ''}`} onClick={() => openAuthGate('analysis')}>
+                <span className="nav-icon">📊</span> Likely WASSCE <span className="nav-full-text">Questions</span>
+              </button>
+              <button className={`nav-link ${activeTab === 'resources' ? 'active' : ''}`} onClick={() => openAuthGate('resources')}>
+                <span className="nav-icon">📚</span> Digital <span className="nav-full-text">Library</span>
+              </button>
+              <button className={`nav-link ${activeTab === 'quiz' ? 'active' : ''}`} onClick={() => openAuthGate('quiz')}>
+                <span className="nav-icon">🎯</span> Live <span className="nav-full-text">Quiz</span>
+              </button>
+              <button className={`nav-link ${activeTab === 'history' ? 'active' : ''}`} onClick={() => openAuthGate('history')}>
+                <span className="nav-icon">📖</span> Practice <span className="nav-full-text">History</span>
+              </button>
             </nav>
 
             <div className="topbar__right">
               <div className="account-actions desktop-only">
-                <button className="theme-toggle-btn" onClick={toggleTheme} title="Toggle theme">
-                  {theme === 'light' ? '🌙' : '☀️'}
-                </button>
+                <IconButton onClick={toggleTheme} title="Toggle theme" sx={{ color: 'text.primary' }}>
+                  {theme === 'light' ? <Brightness4 /> : <Brightness7 />}
+                </IconButton>
                 {account ? (
                   <div className="user-profile">
                     <div className="user-profile__avatar">{account.full_name.charAt(0)}</div>
@@ -575,122 +662,162 @@ function App() {
                 )}
               </div>
 
-              <button className="mobile-menu-trigger" onClick={() => setMobileMenuOpen(true)}>
-                <span className="menu-icon">☰</span>
-              </button>
+              <IconButton
+                className="mobile-menu-trigger mobile-only"
+                onClick={() => setMobileMenuOpen(true)}
+                sx={{ color: 'primary.main' }}
+              >
+                <Menu />
+              </IconButton>
             </div>
           </div>
         </header>
       )}
 
       {/* Mobile Drawer */}
-      <div className={`mobile-drawer ${mobileMenuOpen ? 'open' : ''}`}>
-        <div className="drawer-backdrop" onClick={() => setMobileMenuOpen(false)}></div>
-        <div className="drawer-content">
-          <div className="drawer-header">
-            <div className="brand-mark">F2L</div>
-            <button className="close-btn" onClick={() => setMobileMenuOpen(false)}>✕</button>
-          </div>
-          
-          {account && (
-            <div className="drawer-user">
-              <div className="drawer-user__avatar">{account.full_name.charAt(0)}</div>
-              <div className="drawer-user__info">
-                <span className="drawer-user__name">{account.full_name}</span>
-                {account.is_admin ? (
-                  <span className="sub-badge sub-badge--admin">Admin</span>
-                ) : (
-                  <>
-                    {hasActiveSubscription(account) ? (
-                      <span className="sub-badge sub-badge--active">✓ active</span>
-                    ) : (
-                      <span className="sub-badge sub-badge--inactive">free</span>
-                    )}
-                  </>
-                )}
+      <Transition
+        show={mobileMenuOpen}
+        enter="transition-opacity duration-300"
+        enterFrom="opacity-0"
+        enterTo="opacity-100"
+        leave="transition-opacity duration-200"
+        leaveFrom="opacity-100"
+        leaveTo="opacity-0"
+      >
+        <div className="mobile-drawer open">
+          <Transition
+            show={mobileMenuOpen}
+            enter="transition-transform duration-300 ease-out"
+            enterFrom="transform translate-y-full"
+            enterTo="transform translate-y-0"
+            leave="transition-transform duration-200 ease-in"
+            leaveFrom="transform translate-y-0"
+            leaveTo="transform translate-y-full"
+          >
+            <div className="drawer-content">
+              <div className="drawer-header">
+                <div className="drawer-brand">
+                  <div className="brand-mark">SHS</div>
+                  <div className="drawer-brand__copy">
+                    <strong className="brand-title">Ghana SHS AI Generator</strong>
+                    <span className="brand-subtitle">AI-powered exam prep</span>
+                  </div>
+                </div>
+                <IconButton onClick={() => setMobileMenuOpen(false)} sx={{ color: 'text.primary' }}>
+                  <Close />
+                </IconButton>
               </div>
-            </div>
-          )}
-          
-          <nav className="drawer-nav">
-            {account?.is_admin ? (
-              <button 
-                className={`drawer-link ${activeTab === 'admin' ? 'active' : ''}`} 
-                onClick={() => { setActiveTab('admin'); setMobileMenuOpen(false); }}
-              >
-                <span className="drawer-icon">🛡️</span> Admin Dashboard
-              </button>
-            ) : (
-              <>
-                <button 
-                  className={`drawer-link ${activeTab === 'study' ? 'active' : ''}`} 
-                  onClick={() => { setActiveTab('study'); setMobileMenuOpen(false); }}
-                >
-                  <span className="drawer-icon">🧠</span> Study with AI
-                </button>
-                <button 
-                  className={`drawer-link ${activeTab === 'generator' ? 'active' : ''}`} 
-                  onClick={() => { openAuthGate('generator'); setMobileMenuOpen(false); }}
-                >
-                  <span className="drawer-icon">📝</span> Practice Questions
-                </button>
-                <button 
-                  className={`drawer-link ${activeTab === 'analysis' ? 'active' : ''}`} 
-                  onClick={() => { openAuthGate('analysis'); setMobileMenuOpen(false); }}
-                >
-                  <span className="drawer-icon">📊</span> Likely WASSCE
-                </button>
-                <button 
-                  className={`drawer-link ${activeTab === 'live_quiz' ? 'active' : ''}`} 
-                  onClick={() => { openAuthGate('live_quiz'); setMobileMenuOpen(false); }}
-                >
-                  <span className="drawer-icon">⚡</span> Quiz Challenge
-                </button>
-                <button 
-                  className={`drawer-link ${activeTab === 'competitions' ? 'active' : ''}`} 
-                  onClick={() => { openAuthGate('competitions'); setMobileMenuOpen(false); }}
-                >
-                  <span className="drawer-icon">📰</span> News & Updates
-                </button>
-                <button 
-                  className={`drawer-link ${activeTab === 'resources' ? 'active' : ''}`} 
-                  onClick={() => { openAuthGate('resources'); setMobileMenuOpen(false); }}
-                >
-                  <span className="drawer-icon">📚</span> Digital Library
-                </button>
-                <button 
-                  className={`drawer-link ${activeTab === 'history' ? 'active' : ''}`} 
-                  onClick={() => { openAuthGate('history'); setMobileMenuOpen(false); }}
-                >
-                  <span className="drawer-icon">🕒</span> Study History
-                </button>
-              </>
-            )}
-          </nav>
 
-          <footer className="drawer-footer">
-            <button className="theme-toggle-btn" style={{ width: '100%', gap: '10px' }} onClick={toggleTheme}>
-              {theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'}
-            </button>
-            {account ? (
-              <button className="drawer-logout-btn" onClick={handleLogout}>Log out</button>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button className="signup-btn-full" onClick={() => { openAuthGate(CHAT_TARGET, 'signup'); setMobileMenuOpen(false); }}>
-                  Sign up free
-                </button>
-                <button 
-                  className="drawer-login-link" 
-                  style={{ background: 'transparent', border: 'none', color: 'var(--ink-700)', fontWeight: 700, padding: '8px', cursor: 'pointer', fontSize: '0.9rem' }}
-                  onClick={() => { openAuthGate(CHAT_TARGET, 'login'); setMobileMenuOpen(false); }}
-                >
-                  Already have an account? Log in
-                </button>
+            {account && (
+              <div className="drawer-user">
+                <div className="drawer-user__avatar">{account.full_name.charAt(0)}</div>
+                <div className="drawer-user__info">
+                  <span className="drawer-user__name">{account.full_name}</span>
+                  {account.is_admin ? (
+                    <span className="sub-badge sub-badge--admin">Admin</span>
+                  ) : (
+                    <>
+                      {hasActiveSubscription(account) ? (
+                        <span className="sub-badge sub-badge--active">✓ active</span>
+                      ) : (
+                        <span className="sub-badge sub-badge--inactive">free</span>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             )}
-          </footer>
+            
+            <div className="drawer-nav">
+              <button
+                className={`drawer-link ${activeTab === 'study' ? 'active' : ''}`}
+                onClick={() => { setActiveTab('study'); setMobileMenuOpen(false); }}
+              >
+                <span className="drawer-icon">🧠</span>
+                <span className="drawer-text">Study with AI</span>
+              </button>
+              <button
+                className={`drawer-link ${activeTab === 'generator' ? 'active' : ''}`}
+                onClick={() => { openAuthGate('generator'); setMobileMenuOpen(false); }}
+              >
+                <span className="drawer-icon">📝</span>
+                <span className="drawer-text">Practice Questions</span>
+              </button>
+              <button
+                className={`drawer-link ${activeTab === 'analysis' ? 'active' : ''}`}
+                onClick={() => { openAuthGate('analysis'); setMobileMenuOpen(false); }}
+              >
+                <span className="drawer-icon">📊</span>
+                <span className="drawer-text">Likely WASSCE</span>
+              </button>
+              <button
+                className={`drawer-link ${activeTab === 'resources' ? 'active' : ''}`}
+                onClick={() => { openAuthGate('resources'); setMobileMenuOpen(false); }}
+              >
+                <span className="drawer-icon">📚</span>
+                <span className="drawer-text">Digital Library</span>
+              </button>
+              <button
+                className={`drawer-link ${activeTab === 'quiz' ? 'active' : ''}`}
+                onClick={() => { openAuthGate('quiz'); setMobileMenuOpen(false); }}
+              >
+                <span className="drawer-icon">🎯</span>
+                <span className="drawer-text">Live Quiz</span>
+              </button>
+              <button
+                className={`drawer-link ${activeTab === 'history' ? 'active' : ''}`}
+                onClick={() => { openAuthGate('history'); setMobileMenuOpen(false); }}
+              >
+                <span className="drawer-icon">📖</span>
+                <span className="drawer-text">Practice History</span>
+              </button>
+            </div>
+
+            <Box sx={{ p: 2, borderTop: 1, borderColor: 'rgba(148, 163, 184, 0.18)' }}>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={theme === 'light' ? <Brightness4 /> : <Brightness7 />}
+                onClick={toggleTheme}
+                sx={{ mb: 2 }}
+              >
+                {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+              </Button>
+              {account ? (
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="error"
+                  onClick={handleLogout}
+                >
+                  Log out
+                </Button>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    color="primary"
+                    onClick={() => { openAuthGate(CHAT_TARGET, 'signup'); setMobileMenuOpen(false); }}
+                  >
+                    Sign up free
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant="text"
+                    onClick={() => { openAuthGate(CHAT_TARGET, 'login'); setMobileMenuOpen(false); }}
+                  >
+                    Already have an account? Log in
+                  </Button>
+                </Box>
+              )}
+            </Box>
+            </div>
+          </Transition>
+          <div className="drawer-backdrop" onClick={() => setMobileMenuOpen(false)}></div>
         </div>
-      </div>
+      </Transition>
+
 
 
       <main className="app-content app-content--clean">
@@ -705,13 +832,10 @@ function App() {
           />
         )}
         {activeTab === 'generator' && <QuestionGenerator onSimulationToggle={(val) => setIsExamSimulating(val)} isSimulating={isExamSimulating} />}
-        {activeTab === 'live_quiz' && <LiveQuiz />}
-        {activeTab === 'competitions' && <CompetitionPortal />}
         {activeTab === 'analysis' && <AnalysisDashboard />}
         {activeTab === 'resources' && <ResourceFetcher />}
-        {activeTab === 'leaderboard' && <GlobalLeaderboard />}
-        {activeTab === 'history' && <QuestionGenerator showHistoryOnly={true} />}
-        {activeTab === 'admin' && <AdminDashboard />}
+        {activeTab === 'quiz' && <LiveQuiz />}
+        {activeTab === 'history' && <History />}
       </main>
 
       {/* ── Auth / Subscription Modal ─────────────────────────────────────── */}
@@ -732,7 +856,7 @@ function App() {
                     {authMode === 'signup' ? 'Create your account' : 'Welcome back'}
                   </h2>
                   <p className="authv2__subtitle">
-                    {TAB_COPY[authTarget].icon}&nbsp;{TAB_COPY[authTarget].reason}
+                    <span className="authv2__context-badge">{TAB_META[authTarget].badge}</span> {TAB_COPY[authTarget].reason}
                   </p>
                 </div>
 
@@ -967,7 +1091,9 @@ function App() {
         </div>
       )}
     </div>
+    </ThemeProvider>
   )
 }
 
 export default App
+
