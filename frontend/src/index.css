@@ -57,6 +57,7 @@ body {
   font-family: 'Manrope', sans-serif;
   color: var(--ink-900);
   min-height: 100vh;
+  overflow-x: hidden;
   background:
     radial-gradient(1300px 640px at -15% -20%, rgba(198, 31, 31, 0.16), transparent 55%),
     radial-gradient(980px 560px at 112% 2%, rgba(225, 163, 16, 0.22), transparent 58%),
@@ -120,6 +121,7 @@ textarea:focus-visible {
   padding-bottom: 1rem;
   position: relative;
   isolation: isolate;
+  overflow-x: hidden;
 }
 
 .app::before {
@@ -2771,24 +2773,28 @@ button:disabled {
 
 .drawer-content {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
-  bottom: 1rem;
-  width: min(320px, 85vw);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  top: 0.5rem;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  width: min(320px, 88vw);
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(28px) saturate(210%);
+  -webkit-backdrop-filter: blur(28px) saturate(210%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   box-shadow: 
-    0 30px 60px rgba(0, 0, 0, 0.12),
-    0 0 0 1px rgba(0, 0, 0, 0.02);
-  border-radius: 28px;
+    0 100px 80px rgba(0, 0, 0, 0.07),
+    0 41.7776px 33.4221px rgba(0, 0, 0, 0.0503198),
+    0 22.3363px 17.869px rgba(0, 0, 0, 0.0417275),
+    0 12.5216px 10.0172px rgba(0, 0, 0, 0.035),
+    0 6.6501px 5.32008px rgba(0, 0, 0, 0.0282725),
+    0 2.76726px 2.21381px rgba(0, 0, 0, 0.0196802);
+  border-radius: 32px;
   display: flex;
   flex-direction: column;
-  padding: 1.8rem;
+  padding: 1.5rem;
   overflow-y: auto;
-  transform: translateX(120%) scale(0.95);
-  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateX(110%) scale(0.96);
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: right center;
 }
 
@@ -2805,7 +2811,7 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 2.2rem;
+  margin-bottom: 1.5rem;
 }
 
 .close-btn {
@@ -2836,13 +2842,12 @@ button:disabled {
 .drawer-user {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1.25rem;
-  background: rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.02);
-  border-radius: 20px;
-  margin-top: 0.5rem;
-  margin-bottom: 1.5rem;
+  gap: 0.85rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.03);
+  border-radius: 18px;
+  margin-bottom: 1.25rem;
 }
 
 [data-theme='dark'] .drawer-user {
@@ -2887,24 +2892,25 @@ button:disabled {
 
 .drawer-link {
   text-align: left;
-  padding: 1rem 1.2rem;
-  font-size: 1.05rem;
-  font-weight: 700;
+  padding: 0.85rem 1rem;
+  font-size: 0.98rem;
+  font-weight: 600;
   color: var(--ink-700);
   background: transparent;
   border: none;
-  border-radius: 16px;
+  border-radius: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 0.85rem;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
 }
 
 .drawer-link:hover {
-  background: rgba(0, 0, 0, 0.03);
+  background: rgba(0, 0, 0, 0.02);
   color: var(--ink-900);
-  padding-left: 1.4rem;
+  transform: translateX(4px);
 }
 
 [data-theme='dark'] .drawer-link {
@@ -4273,14 +4279,24 @@ button:disabled {
 .gemini-icon-btn:hover { background: #f1f3f4; color: #202124; }
 
 .gemini-guest-chip {
-  font-size: 0.8rem;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 800;
   color: #1a73e8;
-  background: #e8f0fe;
+  background: rgba(26, 115, 232, 0.08);
+  border: 1px solid rgba(26, 115, 232, 0.12);
   border-radius: 999px;
-  padding: 0.3rem 0.75rem;
+  padding: 0.35rem 0.85rem;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.05);
+}
+
+.gemini-guest-chip:hover {
+  background: rgba(26, 115, 232, 0.15);
+  transform: translateY(-1px);
 }
 
 .gemini-guest-chip:hover { background: #d2e3fc; }
@@ -4291,9 +4307,9 @@ button:disabled {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1.5rem 0;
+  padding: 1.5rem 1rem 0;
   text-align: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .gemini-welcome__logo {
@@ -4302,16 +4318,16 @@ button:disabled {
 
 .gemini-welcome__mark {
   width: auto;
-  min-width: 64px;
-  height: 64px;
-  padding: 0 1.5rem;
-  border-radius: 20px;
+  min-width: 60px;
+  height: 60px;
+  padding: 0 1.25rem;
+  border-radius: 18px;
   background: linear-gradient(135deg, var(--ghana-red) 0%, var(--ghana-gold) 50%, var(--ghana-green) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'Sora', sans-serif;
-  font-size: 1.35rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: #fff;
   box-shadow: 0 8px 24px rgba(11, 122, 75, 0.25);
@@ -4333,12 +4349,20 @@ button:disabled {
 }
 
 .gemini-starters {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 0.65rem;
   width: 100%;
-  max-width: 600px;
-  margin-top: 0.5rem;
+  max-width: 540px;
+  margin-top: 0.75rem;
+  padding: 0 0.5rem;
+}
+
+@media (min-width: 480px) {
+  .gemini-starters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .gemini-starter {
@@ -4714,21 +4738,36 @@ button:disabled {
 /* Responsive */
 @media (max-width: 1080px) {
   .topbar {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: stretch;
-    top: 0.35rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    top: 0;
+    height: 64px;
+    padding: 0 0.5rem;
+  }
+
+  .topbar__inner {
+    padding: 0 0.75rem;
+    gap: 0.5rem;
   }
 
   .topbar__brand {
-    justify-content: flex-start;
+    gap: 0.6rem;
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+  }
+
+  .brand-title {
+    font-size: 1.15rem;
   }
 
   .topbar__nav {
-    justify-content: flex-start;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    padding-bottom: 0.15rem;
-    scrollbar-width: none;
+    display: none;
   }
 
   .topbar__nav::-webkit-scrollbar {

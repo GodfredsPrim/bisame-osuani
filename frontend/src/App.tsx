@@ -618,7 +618,7 @@ function App() {
                 className={`drawer-link ${activeTab === 'admin' ? 'active' : ''}`} 
                 onClick={() => { setActiveTab('admin'); setMobileMenuOpen(false); }}
               >
-                <span className="drawer-icon">🛡️</span> Admin <span className="nav-full-text">Dashboard</span>
+                <span className="drawer-icon">🛡️</span> Admin Dashboard
               </button>
             ) : (
               <>
@@ -626,43 +626,43 @@ function App() {
                   className={`drawer-link ${activeTab === 'study' ? 'active' : ''}`} 
                   onClick={() => { setActiveTab('study'); setMobileMenuOpen(false); }}
                 >
-                  <span className="drawer-icon">🧠</span> Study <span className="nav-full-text">with AI</span>
+                  <span className="drawer-icon">🧠</span> Study with AI
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'generator' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('generator'); setMobileMenuOpen(false); }}
                 >
-                  <span className="drawer-icon">📝</span> Practice <span className="nav-full-text">Questions</span>
+                  <span className="drawer-icon">📝</span> Practice Questions
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'analysis' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('analysis'); setMobileMenuOpen(false); }}
                 >
-                  <span className="drawer-icon">📊</span> Likely WASSCE <span className="nav-full-text">Questions</span>
+                  <span className="drawer-icon">📊</span> Likely WASSCE
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'live_quiz' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('live_quiz'); setMobileMenuOpen(false); }}
                 >
-                  <span className="drawer-icon">⚡</span> Quiz <span className="nav-full-text">Challenge</span>
+                  <span className="drawer-icon">⚡</span> Quiz Challenge
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'competitions' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('competitions'); setMobileMenuOpen(false); }}
                 >
-                  <span className="drawer-icon">📰</span> News <span className="nav-full-text">& Updates</span>
+                  <span className="drawer-icon">📰</span> News & Updates
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'resources' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('resources'); setMobileMenuOpen(false); }}
                 >
-                  <span className="drawer-icon">📚</span> Digital <span className="nav-full-text">Library</span>
+                  <span className="drawer-icon">📚</span> Digital Library
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'history' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('history'); setMobileMenuOpen(false); }}
                 >
-                  <span className="drawer-icon">🕒</span> Study <span className="nav-full-text">History</span>
+                  <span className="drawer-icon">🕒</span> Study History
                 </button>
               </>
             )}
@@ -675,9 +675,18 @@ function App() {
             {account ? (
               <button className="drawer-logout-btn" onClick={handleLogout}>Log out</button>
             ) : (
-              <button className="signup-btn-full" onClick={() => { openAuthGate(CHAT_TARGET); setMobileMenuOpen(false); }}>
-                Sign up free
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button className="signup-btn-full" onClick={() => { openAuthGate(CHAT_TARGET, 'signup'); setMobileMenuOpen(false); }}>
+                  Sign up free
+                </button>
+                <button 
+                  className="drawer-login-link" 
+                  style={{ background: 'transparent', border: 'none', color: 'var(--ink-700)', fontWeight: 700, padding: '8px', cursor: 'pointer', fontSize: '0.9rem' }}
+                  onClick={() => { openAuthGate(CHAT_TARGET, 'login'); setMobileMenuOpen(false); }}
+                >
+                  Already have an account? Log in
+                </button>
+              </div>
             )}
           </footer>
         </div>
