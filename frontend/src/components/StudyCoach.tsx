@@ -92,7 +92,7 @@ export function StudyCoach({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMainConceptOnly, setIsMainConceptOnly] = useState(true);
   const [allHistoryMessages, setAllHistoryMessages] = useState<any[]>([]);
-  const [subjectSearch, setSubjectSearch] = useState('');
+
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -346,21 +346,7 @@ export function StudyCoach({
           <div className="gemini-input-bar">
             {/* Subject pill with search */}
             <div className="gemini-subject-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-              <input 
-                type="text"
-                placeholder="🔍 Subject Search..."
-                value={subjectSearch}
-                onChange={e => setSubjectSearch(e.target.value)}
-                className="chat-input"
-                style={{
-                  width: '140px',
-                  padding: '8px 12px',
-                  fontSize: '0.85rem',
-                  borderRadius: '12px',
-                  border: '1px solid var(--border)',
-                  background: 'var(--surface-soft)'
-                }}
-              />
+
               <select
                 className="gemini-subject"
                 value={subject}
@@ -370,10 +356,9 @@ export function StudyCoach({
               >
                 <option value="General">General (Global AI)</option>
                 {subjects
-                  .filter(s => s.name.toLowerCase().includes(subjectSearch.toLowerCase()))
                   .map(s => (
                     <option key={s.id} value={s.id}>
-                      {s.name.replace(/_/g, ' ')} {subjectSearch.trim() ? `(${s.year})` : ''}
+                      {s.name.replace(/_/g, ' ')} ({s.year})
                     </option>
                   ))
                 }
