@@ -683,6 +683,47 @@ function App() {
         </div>
       </div>
 
+      {/* Mobile Bottom Navigation - Glass Capsule */}
+      {!isExamSimulating && (
+        <nav className="mobile-app-nav mobile-only">
+          <button 
+            className={`mobile-nav-item ${activeTab === 'study' ? 'active' : ''}`}
+            onClick={() => setActiveTab('study')}
+          >
+            <span className="icon">🧠</span>
+            <span className="label">Study AI</span>
+          </button>
+          <button 
+            className={`mobile-nav-item ${activeTab === 'generator' ? 'active' : ''}`}
+            onClick={() => openAuthGate('generator')}
+          >
+            <span className="icon">📝</span>
+            <span className="label">Practice Qs</span>
+          </button>
+          <button 
+            className={`mobile-nav-item ${activeTab === 'analysis' ? 'active' : ''}`}
+            onClick={() => openAuthGate('analysis')}
+          >
+            <span className="icon">📊</span>
+            <span className="label">Likely WASSCE</span>
+          </button>
+          <button 
+            className={`mobile-nav-item ${activeTab === 'history' ? 'active' : ''}`}
+            onClick={() => openAuthGate('history')}
+          >
+            <span className="icon">🕒</span>
+            <span className="label">History</span>
+          </button>
+          <button 
+            className="mobile-nav-item"
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <span className="icon">☰</span>
+            <span className="label">Menu</span>
+          </button>
+        </nav>
+      )}
+
       <main className="app-content app-content--clean">
         {activeTab === 'study' && (
           <StudyCoach

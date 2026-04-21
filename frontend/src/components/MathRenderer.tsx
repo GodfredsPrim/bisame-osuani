@@ -106,12 +106,21 @@ function normalizePlainMath(text: string): string {
     .replace(/\u2260/g, '\\ne ')
     .replace(/\u03c0/g, '\\pi ')
     .replace(/\u03b8/g, '\\theta ')
+    .replace(/\u03b1/g, '\\alpha ')
+    .replace(/\u03b2/g, '\\beta ')
+    .replace(/\u221e/g, '\\infty ')
     .replace(/\u00b0/g, '^{\\circ}');
 
   normalized = convertUnicodeScripts(normalized);
 
+  // Advanced patterns
   normalized = normalized.replace(/∛\s*([A-Za-z0-9().+\-]+)/g, '\\sqrt[3]{$1}');
   normalized = normalized.replace(/√\s*([A-Za-z0-9().+\-]+)/g, '\\sqrt{$1}');
+  
+  // Fractions: detect "number / number" or "(expr) / (expr)"
+  normalized = normalized.replace(/(\d+)\s*\/\s*(\d+)/g, '\\frac{$1}{$2}');
+  
+  // Powers: detect basic variable^exponent
   normalized = normalized.replace(/([A-Za-z0-9)])\^([A-Za-z0-9+\-()]+)/g, '$1^{$2}');
   normalized = normalized.replace(/([A-Za-z0-9)])_([A-Za-z0-9+\-()]+)/g, '$1_{$2}');
 
@@ -119,7 +128,12 @@ function normalizePlainMath(text: string): string {
 }
 
 function shouldRenderAsMath(text: string): boolean {
-  return /[√∛≤≥≠πθ²³⁻₀-₉]|(?:\d+\s*[+\-/*=]\s*\d+)|(?:[A-Za-z]\^\{)|(?:\\sqrt)|(?:\\times)|(?:\\div)|(?:\\pi)|(?:\\theta)/.test(text);
+  // Catch standard math symbols, greek letters, or algebraic expressions
+  const hasMathSymbols = /[√∛≤≥≠πθαβ∞²³⁻₀-₉]/.test(text);
+  const hasLatexCommands = /\\(sqrt|times|div|pi|theta|alpha|beta|le|ge|ne|frac|hat|bar|vec|infinity)/.test(text);
+  const hasAlgebraicPattern = /([a-z]\s*[+\-/*=]\s*[a-z0-9])|([0-9]\s*[+\-/*=]\s*[a-z])|(\d+\^)/i.test(text);
+  
+  return hasMathSymbols || hasLatexCommands || hasAlgebraicPattern;
 }
 
 function preprocessText(text: string): string {

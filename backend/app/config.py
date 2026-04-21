@@ -17,8 +17,26 @@ class Settings(BaseSettings):
 
     # Database & Persistence
     PERSISTENCE_DIR: Path = BACKEND_DIR / "data" / "persistence"
-    DATABASE_URL: str = f"sqlite:///{(PERSISTENCE_DIR / 'gh_shs.db').as_posix()}"
+    DATABASE_URL: str = "" # Set this in Render env for Supabase
     AUTH_DB_PATH: Path = PERSISTENCE_DIR / "auth.db"
+
+    @property
+    def is_postgres(self) -> bool:
+        return self.DATABASE_URL.startswith("postgres://") or self.DATABASE_URL.startswith("postgresql://")
+
+    @property
+    def db_url(self) -> str:
+        # If no DATABASE_URL is provided, fallback to local SQLite
+        if not self.DATABASE_URL:
+            # Note: auth.db is used as the primary for users while gh_shs.db is used for app data
+            # In Supabase/Postgres, we combine them into one DB.
+            return f"sqlite:///{(self.PERSISTENCE_DIR / 'auth.db').as_posix()}"
+        
+        # fix: Render and Supabase often provide postgres:// which SQLAlchemy/psycopg2 
+        # sometimes needs as postgresql://
+        if self.DATABASE_URL.startswith("postgres://"):
+            return self.DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        return self.DATABASE_URL
 
     # Authentication
     AUTH_SECRET_KEY: str = "change-this-auth-secret"

@@ -105,6 +105,7 @@ CRITICAL RULES:
 3. Do NOT provide examples, steps, suggestions, or tips.
 4. Do NOT use headers or bold labels.
 5. Return ONLY the factual explanation text.
+6. MATH FORMATTING: You MUST use standard LaTeX delimiters ($ .. $ for inline, $$ .. $$ for blocks) for all mathematical expressions and symbols.
 
 Subject: {subject_label}
 Additional student context: {context or 'None'}
@@ -131,6 +132,7 @@ Response rules:
 - Under that heading, provide numbered steps in plain text.
 - Then include a heading exactly named: Final Answer
 - Do not use markdown tables.
+- MATH FORMATTING: You MUST use standard LaTeX delimiters ($ .. $ for inline, $$ .. $$ for blocks) for all mathematical symbols, equations, and formulas. NEVER use plain text for math.
 
 Subject: {subject_label}
 Additional student context: {context or 'None'}
@@ -150,6 +152,7 @@ Response rules:
 - Do NOT use headers like "Main Idea" or "Explanation".
 - Do NOT include "Study Tips".
 - Do not use markdown tables.
+- MATH FORMATTING: You MUST use standard LaTeX delimiters ($ .. $ for inline, $$ .. $$ for blocks) for all symbols like pi, theta, chemical formulas, and equations.
 
 Subject: {subject_label}
 Additional student context: {context or 'None'}
@@ -255,6 +258,10 @@ Helpful textbook context:
 
             response = await asyncio.wait_for(llm.ainvoke(messages), timeout=60.0)
             content = response.content if isinstance(response.content, str) else str(response.content)
+            
+            # Terminal Verification Log
+            logger.info(f"📊 TERMINAL VERIFICATION (Tutor) - Content: {content[:100]}...")
+            
             parsed = self._parse_response(content, mode)
             
             if mode != "core_concept":

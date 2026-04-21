@@ -143,6 +143,7 @@ Requirements:
 4. YEAR 3 RULE: Questions must cover the entire SHS 1 - SHS 3 curriculum.
 5. ANSWERS: For MCQs, provide the correct option. For Theory, provide a detailed marking guide or full step-by-step solution.
 6. SEQUENCING: Return the questions in a logical, sequential order typical of an exam (e.g. from fundamental to complex topics).
+7. MATH FORMATTING: You MUST use standard LaTeX delimiters for all mathematical symbols, equations, and formulas. Use $ .. $ for inline math and $$ .. $$ for large block equations. Never use plain text for math symbols (e.g. use $\pi$ instead of pi).
 
 Return valid JSON array of {num_questions} objects:
 [
@@ -286,6 +287,7 @@ Requirements:
 7. If past-question excerpts are available, do NOT use textbook excerpts at all; derive questions from past-question patterns only.
 8. If no past-question or textbook excerpts are available below, you MUST generate high-quality questions from your internal knowledge of the official WAEC and Ghanaian curriculum for this specific subject and academic year.
 9. Use teacher resource notes to improve tips/tricks and exam strategy where available.
+10. MATH FORMATTING: You MUST use standard LaTeX delimiters ($ .. $ for inline, $$ .. $$ for blocks) for ALL mathematical symbols, equations, arithmetic, and formulas. NEVER use plain text for symbols like pi, theta, or fractions.
 
 *** CRITICAL RANDOMIZATION DIRECTIVE ***
 Seed Token: {random.randint(10000, 99999)}
@@ -689,6 +691,11 @@ Only include "options" for multiple choice questions (omit for essay). Each ques
             data = json.loads(response[json_start:json_end])
             if not isinstance(data, list) or not data:
                 raise ValueError("LLM response did not contain any questions")
+
+            # Terminal Verification Log
+            if data:
+                sample_q = data[0].get("question_text") or data[0].get("question") or ""
+                logger.info(f"📊 TERMINAL VERIFICATION - Math Content: {sample_q[:100]}...")
 
             questions = []
             for item in data[:num_questions]:
