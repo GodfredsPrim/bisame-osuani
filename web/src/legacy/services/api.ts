@@ -16,9 +16,10 @@ export function setAuthToken(token: string | null) {
 }
 
 apiClient.interceptors.request.use((config) => {
-  if (authToken) {
+  const token = authToken || (typeof window !== 'undefined' ? localStorage.getItem('fun2learn_access_token') : null);
+  if (token) {
     config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${authToken}`;
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
