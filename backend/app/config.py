@@ -37,26 +37,30 @@ class Settings(BaseSettings):
             url = url.replace("postgres://", "postgresql://", 1)
             
         # Sanitize credentials for psycopg2 (handles passwords with symbols like %)
+        # and strip incompatible query parameters like pgbouncer
         if url.startswith("postgresql://"):
-            from urllib.parse import urlparse, urlunparse, quote, unquote
+            from urllib.parse import urlparse, urlunparse, quote, unquote, parse_qs, urlencode
             try:
                 parsed = urlparse(url)
+                
+                # 1. Sanitize credentials
+                new_netloc = parsed.netloc
                 if parsed.username or parsed.password:
                     username = quote(unquote(parsed.username)) if parsed.username else ""
                     password = quote(unquote(parsed.password)) if parsed.password else ""
-                    
-                    # Reconstruct netloc: user:pass@host:port
-                    new_netloc = ""
-                    if username and password:
-                        new_netloc = f"{username}:{password}@"
-                    elif username:
-                        new_netloc = f"{username}@"
-                    
-                    new_netloc += parsed.hostname or ""
+                    new_netloc = f"{username}:{password}@{parsed.hostname}"
                     if parsed.port:
                         new_netloc += f":{parsed.port}"
-                    
-                    url = urlunparse(parsed._replace(netloc=new_netloc))
+                
+                # 2. Strip incompatible query parameters (pgbouncer)
+                query_params = parse_qs(parsed.query)
+                if 'pgbouncer' in query_params:
+                    del query_params['pgbouncer']
+                
+                new_query = urlencode(query_params, doseq=True)
+                
+                # 3. Reconstruct
+                url = urlunparse(parsed._replace(netloc=new_netloc, query=new_query))
             except Exception:
                 pass
                 
