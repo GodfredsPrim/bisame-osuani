@@ -25,6 +25,7 @@ export function LiveQuiz() {
   const [timeLimit, setTimeLimit] = useState(5);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [semester, setSemester] = useState('all_year');
+  const [subjectSearch, setSubjectSearch] = useState('');
 
   const years = useMemo(() => {
     const y = Array.from(new Set(subjects.map((s) => s.year))).sort();
@@ -33,11 +34,20 @@ export function LiveQuiz() {
   }, [subjects]);
 
   const filteredSubjects = useMemo(() => {
-    if (selectedYear === 'Year 3') {
-      return Array.from(new Map(subjects.map(s => [s.name, s])).values());
+    let list = subjects;
+    if (selectedYear !== 'Year 3') {
+      list = list.filter((s) => s.year === selectedYear);
+    } else {
+      list = Array.from(new Map(subjects.map(s => [s.name, s])).values());
     }
-    return subjects.filter((s) => s.year === selectedYear);
-  }, [subjects, selectedYear]);
+
+    if (subjectSearch.trim()) {
+      const term = subjectSearch.toLowerCase();
+      list = list.filter(s => s.name.toLowerCase().includes(term));
+    }
+
+    return list;
+  }, [subjects, selectedYear, subjectSearch]);
 
   useEffect(() => {
     const loadSubjects = async () => {
@@ -115,7 +125,7 @@ export function LiveQuiz() {
         subject,
         year: selectedYear,
         question_type: 'multiple_choice',
-        num_questions: 5,
+        num_questions: 10, // Default to 10 for more competitive feel
         difficulty_level: difficulty,
         time_limit: timeLimit,
         semester,
@@ -164,7 +174,6 @@ export function LiveQuiz() {
       const latest = await questionsAPI.getLiveQuizState(roomCode);
       setState(latest);
 
-      // Save to global history for leaderboard points
       try {
         await questionsAPI.saveExamHistory({
           exam_type: 'challenge_quiz',
@@ -193,225 +202,193 @@ export function LiveQuiz() {
   };
 
   return (
-    <div className={`generator-section ${roomCode ? 'quiz-active' : ''}`}>
+    <div className="quiz-room-container">
       {!roomCode ? (
-        <>
-          <div className="generator-hero">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-              <div style={{ fontSize: '3.5rem', filter: 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.5))' }}>⚡</div>
-              <div>
-                <h2 style={{ fontSize: '2.5rem', marginBottom: '10px' }}>Challenge Quiz</h2>
-                <p style={{ fontSize: '1.1rem', opacity: 0.8 }}>Join or host a real-time practice session with other students.</p>
+        <div className="quiz-v2-setup">
+          <div className="quiz-hero" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: 'white' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+              <div className="live-dot" style={{ width: '20px', height: '20px' }}></div>
+              <div style={{ flex: 1 }}>
+                <h2 style={{ fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', color: 'white', margin: 0 }}>Quiz Challenge</h2>
+                <p style={{ opacity: 0.7, margin: '5px 0 0 0' }}>Join a live competitive room or host your own.</p>
               </div>
             </div>
           </div>
 
-          {error && <div className="error-message" style={{ margin: '20px auto', maxWidth: '800px' }}>⚠️ {error}</div>}
+          {error && <div className="error-message" style={{ margin: '20px 0' }}>⚠️ {error}</div>}
 
-          <div className="form-grid generator-panel" style={{ 
-            border: '1px solid #e2e8f0', 
-            background: 'white',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.05)',
-            borderRadius: '24px',
-            padding: '40px'
-          }}>
-            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-              <label>Your Name</label>
-              <input value={playerName} onChange={(e) => setPlayerName(e.target.value)} placeholder="Enter your display name..." style={{ fontSize: '1.2rem', padding: '15px' }} />
-            </div>
-            <div className="form-group">
-              <label>Academic Year</label>
-              <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
-                {years.map((y) => <option key={y}>{y}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Subject</label>
-              <select value={subject} onChange={(e) => setSubject(e.target.value)}>
-                {filteredSubjects.map((s) => <option key={s.id} value={s.id}>{s.name.replace(/_/g, ' ')}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Difficulty</label>
-              <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Time Limit (mins)</label>
+          <div className="quiz-v2-card" style={{ marginBottom: '2rem' }}>
+             <div className="form-group" style={{ marginBottom: '2rem' }}>
+              <label style={{ fontSize: '1rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>Your Display Name</label>
               <input 
-                type="number" min="1" max="60" 
-                value={timeLimit} 
-                onChange={(e) => setTimeLimit(parseInt(e.target.value) || 1)} 
+                value={playerName} 
+                onChange={(e) => setPlayerName(e.target.value)} 
+                placeholder="How should we call you?" 
+                className="chat-input" 
+                style={{ fontSize: '1.2rem', padding: '15px', borderRadius: '15px' }} 
               />
             </div>
-            <div className="form-group">
-              <label>Semester Selection</label>
-              <select value={semester} onChange={(e) => setSemester(e.target.value)}>
-                <option value="all_year">Full Year (Recommended)</option>
-                <option value="semester_1">First Semester (Sem 1)</option>
-                <option value="semester_2">Second Semester (Sem 2)</option>
-              </select>
-            </div>
-          </div>
 
-          <div style={{ marginTop: '40px', textAlign: 'center', background: 'white', padding: '40px', borderRadius: '32px', border: '1px solid #e2e8f0' }}>
-            <div style={{ marginBottom: '20px', fontSize: '0.85rem', color: '#64748b', fontWeight: 800, letterSpacing: '1px' }}>JOIN EXISTING ROOM</div>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', maxWidth: '500px', margin: '0 auto' }}>
-                <input
-                  value={codeInput}
-                  onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-                  placeholder="ROOM CODE"
-                  style={{ textAlign: 'center', fontSize: '1.2rem', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0', width: '100%' }}
-                />
-                <button className="btn-secondary" onClick={joinRoom} disabled={loading} style={{ padding: '0 40px', fontSize: '1.1rem', borderRadius: '12px' }}>
-                  JOIN
-                </button>
+            <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+              <div className="form-group">
+                <label>Academic Year</label>
+                <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+                  {years.map((y) => <option key={y}>{y}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ marginBottom: 0 }}>Subject</label>
+                  <input 
+                    type="text" 
+                    placeholder="Search..." 
+                    value={subjectSearch}
+                    onChange={(e) => setSubjectSearch(e.target.value)}
+                    className="chat-input"
+                    style={{ width: '100px', padding: '4px 8px', fontSize: '0.75rem', borderRadius: '8px' }}
+                  />
+                </div>
+                <select value={subject} onChange={(e) => setSubject(e.target.value)}>
+                   {filteredSubjects.length > 0 ? (
+                    filteredSubjects.map((s) => <option key={s.id} value={s.id}>{s.name.replace(/_/g, ' ')}</option>)
+                  ) : (
+                    <option disabled>No subjects found</option>
+                  )}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Difficulty</label>
+                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
+                  <option value="easy">Beginner</option>
+                  <option value="medium">Standard</option>
+                  <option value="hard">Expert</option>
+                </select>
+              </div>
             </div>
-            
-            <div style={{ margin: '40px 0', height: '1px', background: '#e2e8f0' }} />
-            
-            <button className="btn-primary" onClick={createRoom} disabled={loading} style={{ background: '#0f172a', color: 'white', padding: '18px 60px', fontSize: '1.2rem', borderRadius: '16px', fontWeight: 700 }}>
-               Host New Room
+
+            <button className="btn-primary" onClick={createRoom} disabled={loading} style={{ background: '#3b82f6', color: 'white', padding: '20px', fontSize: '1.2rem', borderRadius: '20px', fontWeight: 800, width: '100%', boxShadow: '0 10px 20px -5px rgba(59, 130, 246, 0.4)' }}>
+               {loading ? 'Creating...' : '🚀 Host New Challenge'}
             </button>
           </div>
-        </>
-      ) : (
-        <div className="quiz-room-active" style={{ padding: '20px 0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', background: '#0f172a', padding: '25px', borderRadius: '24px', color: 'white' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 700 }}>ROOM CODE</div>
-              <div style={{ fontSize: '2.5rem', fontWeight: 900, letterSpacing: '4px' }}>{roomCode}</div>
-              <button 
-                onClick={() => { navigator.clipboard.writeText(roomCode); alert('Room code copied!'); }}
-                style={{ padding: '8px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
-              >
-                📋
+
+          <div className="quiz-v2-card" style={{ textAlign: 'center' }}>
+            <h4 style={{ textTransform: 'uppercase', letterSpacing: '2px', color: '#64748b', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Join Existing Room</h4>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', justifyContent: 'center' }}>
+              <input
+                value={codeInput}
+                onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+                placeholder="ENTER 6-DIGIT CODE"
+                className="chat-input"
+                style={{ textAlign: 'center', fontSize: '1.5rem', fontWeight: 900, letterSpacing: '4px', padding: '15px', borderRadius: '15px', flex: '1 1 200px', maxWidth: '300px' }}
+              />
+              <button className="btn-secondary" onClick={joinRoom} disabled={loading} style={{ padding: '0 40px', fontSize: '1.1rem', borderRadius: '15px' }}>
+                JOIN
               </button>
             </div>
-
+          </div>
+        </div>
+      ) : (
+        <div className="quiz-v2-active">
+          <div className="quiz-status-bar">
+            <div className="live-indicator">
+              <div className="live-dot"></div>
+              <span>Live Room</span>
+            </div>
             {timeLeft !== null && (
-              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: timeLeft < 60 ? '#ef4444' : 'white' }}>
+              <div style={{ fontWeight: 900, fontSize: '1.2rem', color: timeLeft < 60 ? '#ef4444' : 'white' }}>
                 ⏱️ {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
               </div>
             )}
-
             <button 
-              className="btn-secondary" 
               onClick={() => { setRoomCode(''); setState(null); setResult(null); }}
-              style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', color: '#ef4444', padding: '10px 20px', borderRadius: '12px' }}
+              style={{ background: 'rgba(255, 255, 255, 0.1)', border: 'none', color: 'white', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 }}
             >
-              Leave Room
+              EXIT
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: '30px' }}>
+          <div className="quiz-code-display">
+             <span style={{ fontSize: '0.8rem', fontWeight: 800, letterSpacing: '2px', color: '#64748b' }}>INVITE OTHERS WITH CODE</span>
+             <div className="quiz-code-text" onClick={() => { navigator.clipboard.writeText(roomCode); alert('Room code copied!'); }} style={{ cursor: 'pointer' }}>{roomCode}</div>
+          </div>
+
+          <div className="quiz-room__content">
             <div className="questions-container">
               {state?.questions.map((q, idx) => (
-                <div key={idx} style={{ marginBottom: '25px', padding: '35px', background: 'white', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', borderBottom: '1px solid #f1f5f9', paddingBottom: '15px' }}>
-                    <div style={{ fontWeight: 800, color: '#3b82f6', fontSize: '1rem' }}>QUESTION {idx + 1}</div>
+                <div key={idx} className="quiz-v2-card" style={{ marginBottom: '2rem', padding: '2rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
+                    <span style={{ fontWeight: 900, color: '#3b82f6', letterSpacing: '1px' }}>QUESTION {idx + 1}</span>
                   </div>
-                  <div style={{ fontSize: '1.25rem', marginBottom: '30px', lineHeight: 1.6, color: '#0f172a', fontWeight: 500 }}>
+                  
+                  <div style={{ fontSize: 'clamp(1.1rem, 3vw, 1.4rem)', lineHeight: 1.5, color: '#0f172a', fontWeight: 600, marginBottom: '2rem' }}>
                     <MathRenderer text={q.question_text} />
                   </div>
                   
-                  {q.options ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                      {q.options.map((opt, i) => {
-                        const letter = String.fromCharCode(65 + i);
-                        const isSelected = answers[idx] === opt;
-                        const cleanedOpt = opt.replace(/^(Option\s+[A-D][:.]\s*|[A-D][:.]\s*)/i, '').trim();
-                        return (
-                          <div 
-                            key={i} 
-                            style={{ 
-                                padding: '18px',
-                                borderRadius: '16px',
-                                border: '2px solid',
-                                borderColor: isSelected ? '#3b82f6' : '#f1f5f9',
-                                background: isSelected ? '#eff6ff' : '#f8fafc',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '15px'
-                            }}
-                            onClick={() => setAnswers(prev => ({ ...prev, [idx]: opt }))}
-                          >
-                            <span style={{ 
-                              fontWeight: 800, 
-                              color: isSelected ? 'white' : '#3b82f6',
-                              background: isSelected ? '#3b82f6' : 'white',
-                              width: '32px',
-                              height: '32px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              borderRadius: '8px',
-                              border: isSelected ? 'none' : '1px solid #e2e8f0'
-                            }}>{letter}</span>
-                            <span style={{ fontSize: '1.1rem', color: '#1e293b' }}><MathRenderer text={cleanedOpt} /></span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <textarea
-                      rows={4}
-                      style={{ width: '100%', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '20px', fontSize: '1.1rem' }}
-                      value={answers[idx] || ''}
-                      onChange={(e) => setAnswers((prev) => ({ ...prev, [idx]: e.target.value }))}
-                      placeholder="Type your answer here..."
-                    />
-                  )}
+                  <div className="options-v2-grid">
+                    {q.options?.map((opt, i) => {
+                      const letter = String.fromCharCode(65 + i);
+                      const isSelected = answers[idx] === opt;
+                      const cleanedOpt = opt.replace(/^(Option\s+[A-D][:.]\s*|[A-D][:.]\s*)/i, '').trim();
+                      return (
+                        <div 
+                          key={i} 
+                          className={`option-v2-btn ${isSelected ? 'selected' : ''}`}
+                          onClick={() => setAnswers(prev => ({ ...prev, [idx]: opt }))}
+                        >
+                          <div className="option-indicator">{letter}</div>
+                          <div style={{ fontSize: '1rem', fontWeight: 500 }}><MathRenderer text={cleanedOpt} /></div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
 
-              <div style={{ margin: '40px 0', textAlign: 'center' }}>
-                {!result && (
+              <div style={{ margin: '4rem 0', textAlign: 'center' }}>
+                {!result ? (
                   <button 
                     onClick={submitQuiz} 
                     disabled={loading} 
-                    style={{ width: '100%', maxWidth: '400px', padding: '20px', fontSize: '1.3rem', borderRadius: '16px', background: '#3b82f6', color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer' }}
+                    className="btn-primary"
+                    style={{ width: '100%', maxWidth: '400px', padding: '25px', fontSize: '1.5rem', borderRadius: '25px', background: '#10b981', color: 'white', fontWeight: 900, boxShadow: '0 20px 30px -10px rgba(16, 185, 129, 0.4)' }}
                   >
-                    {loading ? 'Submitting...' : 'Submit Final Answers'}
+                    {loading ? 'Submitting...' : 'FINISH & SUBMIT'}
                   </button>
-                )}
-                {result && (
-                  <div style={{ marginTop: '30px', border: '2px solid #10b981', background: '#ecfdf5', padding: '40px', borderRadius: '32px' }}>
-                    <h2 style={{ color: '#047857', marginBottom: '10px', fontSize: '2rem', fontWeight: 800 }}>Quiz Complete</h2>
-                    <p style={{ color: '#064e3b', opacity: 0.8, fontSize: '1.1rem' }}>Your final score is</p>
-                    <p style={{ fontSize: '5rem', fontWeight: 900, color: '#047857', margin: '10px 0' }}>{result.percentage}%</p>
+                ) : (
+                  <div className="quiz-v2-card" style={{ background: '#ecfdf5', borderColor: '#10b981' }}>
+                    <h2 style={{ color: '#047857', fontWeight: 900, fontSize: '2rem' }}>CHALLENGE OVER</h2>
+                    <div style={{ fontSize: '6rem', fontWeight: 900, color: '#059669', margin: '20px 0' }}>{result.percentage}%</div>
+                    <p style={{ color: '#065f46', fontWeight: 700 }}>Ranked on Leaderboard!</p>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="sidebar">
-              <div style={{ position: 'sticky', top: '20px', background: 'white', padding: '30px', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
-                <h4 style={{ marginBottom: '20px', borderBottom: '1px solid #f1f5f9', paddingBottom: '15px', color: '#0f172a', fontSize: '1rem', fontWeight: 800 }}>LIVE LEADERBOARD</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="quiz-sidebar">
+              <div className="quiz-v2-card" style={{ padding: '1.5rem', position: 'sticky', top: '20px' }}>
+                <h4 style={{ margin: '0 0 1.5rem 0', fontWeight: 900, letterSpacing: '1px', borderBottom: '2px solid #f1f5f9', paddingBottom: '0.75rem' }}>🏆 LEADERBOARD</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {state?.leaderboard.map((row, idx) => {
                     const isMe = row.player.toLowerCase() === playerName.toLowerCase();
                     return (
                       <div key={row.player} style={{ 
-                        padding: '15px',
-                        borderRadius: '12px',
+                        padding: '12px 15px',
+                        borderRadius: '15px',
                         background: isMe ? '#eff6ff' : '#f8fafc',
-                        border: '1px solid',
+                        border: '2px solid',
                         borderColor: isMe ? '#3b82f6' : '#e2e8f0',
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        transition: 'all 0.3s ease'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <span style={{ fontSize: '1.2rem' }}>{getRankBadge(idx)}</span>
-                          <strong style={{ fontSize: '1rem', color: '#1e293b' }}>{row.player}</strong>
+                          <span style={{ fontWeight: 800, color: isMe ? '#1e40af' : '#1e293b' }}>{row.player}</span>
                         </div>
-                        <div style={{ fontWeight: 800, color: row.submitted ? '#10b981' : '#94a3b8' }}>
-                          {row.submitted ? `${row.percentage}%` : '...'}
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontWeight: 900, color: '#0f172a' }}>{row.score}</div>
+                          {row.submitted && <div style={{ fontSize: '0.6rem', color: '#10b981', fontWeight: 900 }}>DONE</div>}
                         </div>
                       </div>
                     );

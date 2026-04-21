@@ -284,7 +284,7 @@ Requirements:
 5. Cover these topics when relevant: {topic_text}.
 6. PRIORITY: use past-question excerpts first for style/structure, and use textbook excerpts for topical coverage.
 7. If past-question excerpts are available, do NOT use textbook excerpts at all; derive questions from past-question patterns only.
-8. If past-question excerpts are unavailable for this subject, generate from textbook excerpts only.
+8. If no past-question or textbook excerpts are available below, you MUST generate high-quality questions from your internal knowledge of the official WAEC and Ghanaian curriculum for this specific subject and academic year.
 9. Use teacher resource notes to improve tips/tricks and exam strategy where available.
 
 *** CRITICAL RANDOMIZATION DIRECTIVE ***

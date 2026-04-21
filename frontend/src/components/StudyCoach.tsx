@@ -92,6 +92,7 @@ export function StudyCoach({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMainConceptOnly, setIsMainConceptOnly] = useState(true);
   const [allHistoryMessages, setAllHistoryMessages] = useState<any[]>([]);
+  const [subjectSearch, setSubjectSearch] = useState('');
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -343,18 +344,39 @@ export function StudyCoach({
           )}
 
           <div className="gemini-input-bar">
-            {/* Subject pill */}
-            <select
-              className="gemini-subject"
-              value={subject}
-              onChange={e => setSubject(e.target.value)}
-              title="Choose subject"
-            >
-              <option value="General">General</option>
-              {subjects.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+            {/* Subject pill with search */}
+            <div className="gemini-subject-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <select
+                className="gemini-subject"
+                value={subject}
+                onChange={e => setSubject(e.target.value)}
+                title="Choose subject"
+              >
+                <option value="General">General</option>
+                {subjects
+                  .filter(s => s.name.toLowerCase().includes(subjectSearch.toLowerCase()))
+                  .map(s => (
+                    <option key={s.id} value={s.id}>{s.name.replace(/_/g, ' ')}</option>
+                  ))
+                }
+              </select>
+              <input 
+                type="text"
+                placeholder="🔍"
+                value={subjectSearch}
+                onChange={e => setSubjectSearch(e.target.value)}
+                className="subject-search-pill"
+                style={{
+                  width: '30px',
+                  border: 'none',
+                  background: 'transparent',
+                  padding: '0 5px',
+                  fontSize: '0.8rem',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              />
+            </div>
 
             <textarea
               ref={textareaRef}

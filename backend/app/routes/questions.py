@@ -170,7 +170,8 @@ async def generate_questions(request: QuestionGenerationRequest):
             )
             source_status = generator.get_source_status(year_key=year_key, subject_slug=subject_id)
             if source_status.get("source_used") == "none_found":
-                raise HTTPException(status_code=404, detail="No source material found.")
+                logger.info(f"No source material found for {subject_id}, will fallback to AI knowledge")
+                source_status["source_used"] = "ai_generated"
         
         try:
             subject_enum = Subject(subject_id)

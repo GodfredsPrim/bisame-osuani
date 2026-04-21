@@ -30,19 +30,6 @@ wheels/
 .vscode/
 .idea/
 *.swp
-*.swo
-*~
-.DS_Store
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Uploads
-uploads/
-vector_store/
-
 # Frontend ignore
 node_modules/
 dist/
@@ -90,3 +77,5 @@ backend/data/
 backend/run_logs/
 frontend/run_logs/
 run_logs/
+backend/*.db
+backend/vector_store/

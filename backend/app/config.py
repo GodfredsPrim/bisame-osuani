@@ -1,16 +1,13 @@
 from pathlib import Path
-
 from pydantic_settings import BaseSettings
 
-
 BACKEND_DIR = Path(__file__).resolve().parents[1]
-
 
 class Settings(BaseSettings):
     # API Configuration
     OPENAI_API_KEY: str = ""
     OPENAI_BASE_URL: str = ""
-    OPENAI_MODEL: str = "gpt-4o-mini"  # Vision-capable default for Study with AI OCR and tutoring
+    OPENAI_MODEL: str = "gpt-4o-mini"
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_MODEL: str = "deepseek-chat"
     LLM_FALLBACK_ENABLED: bool = True
@@ -18,9 +15,10 @@ class Settings(BaseSettings):
     LLM_BASE_URL: str = ""
     LLM_MODEL: str = ""
 
-    # Database
-    DATABASE_URL: str = f"sqlite:///{(BACKEND_DIR / 'gh_shs.db').as_posix()}"
-    AUTH_DB_PATH: Path = BACKEND_DIR / "auth.db"
+    # Database & Persistence
+    PERSISTENCE_DIR: Path = BACKEND_DIR / "data" / "persistence"
+    DATABASE_URL: str = f"sqlite:///{(PERSISTENCE_DIR / 'gh_shs.db').as_posix()}"
+    AUTH_DB_PATH: Path = PERSISTENCE_DIR / "auth.db"
 
     # Authentication
     AUTH_SECRET_KEY: str = "change-this-auth-secret"
@@ -55,7 +53,7 @@ class Settings(BaseSettings):
 
     # Auto-loading
     AUTO_LOAD_ON_STARTUP: bool = True
-    LAZY_LOAD: bool = True  # Only load syllabi on startup, rest on-demand
+    LAZY_LOAD: bool = True
     SELECTIVE_LOAD: bool = True
     LOAD_SYLLABI_ONLY: bool = False
     MAX_INITIAL_SUBJECTS: int = 5
@@ -88,9 +86,10 @@ class Settings(BaseSettings):
         env_file = BACKEND_DIR / ".env"
         case_sensitive = True
 
-
 settings = Settings()
 
+# Ensure directories exist
 settings.PDF_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 settings.VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
 settings.SITE_RESOURCE_DIR.mkdir(parents=True, exist_ok=True)
+settings.PERSISTENCE_DIR.mkdir(parents=True, exist_ok=True)

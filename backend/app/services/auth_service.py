@@ -21,6 +21,20 @@ class AuthService:
     def __init__(self) -> None:
         self.db_path = Path(settings.AUTH_DB_PATH)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Production Safety: Log database location for Render.com debugging
+        logger.info(f"🗄️ Database configured at: {self.db_path.absolute()}")
+        
+        # Automated Backup on Startup
+        if self.db_path.exists() and self.db_path.stat().st_size > 0:
+            try:
+                import shutil
+                backup_path = self.db_path.with_suffix(".db.bak")
+                shutil.copy2(self.db_path, backup_path)
+                logger.info(f"📂 Created safety backup at: {backup_path.name}")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not create database backup: {str(e)}")
+        
         self._ensure_tables()
 
     def _connect(self) -> sqlite3.Connection:

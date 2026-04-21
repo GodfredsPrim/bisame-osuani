@@ -50,15 +50,17 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
   const [examHistory, setExamHistory] = useState<ExamHistoryEntry[]>([]);
   const [semester, setSemester] = useState('all_year');
   const [isViewingHistory, setIsViewingHistory] = useState(false);
+  const [subjectSearch, setSubjectSearch] = useState('');
 
   const availableYears = Array.from(new Set(subjects.map((s) => s.year))).sort();
   if (!availableYears.includes('Year 3') && subjects.length > 0) {
     availableYears.push('Year 3');
   }
 
-  const filteredSubjects = selectedYear === 'Year 3' 
+  const filteredSubjects = (selectedYear === 'Year 3' 
     ? Array.from(new Map(subjects.map(s => [s.name, s])).values())
-    : subjects.filter((s) => s.year === selectedYear);
+    : subjects.filter((s) => s.year === selectedYear)
+  ).filter(s => s.name.toLowerCase().includes(subjectSearch.toLowerCase()));
 
   useEffect(() => {
     const fetchSubjects = async () => {
@@ -355,22 +357,23 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
         {isSimulating ? (
           <div className="interactive-answer">
             {q.options && q.options.length > 0 ? (
-              <div className="options" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '15px' }}>
+              <div className="options-v2-grid" style={{ marginTop: '1.5rem' }}>
                 {q.options.map((opt, i) => {
                   const letter = String.fromCharCode(65 + i);
-                  // Strip the "Option A: " or similar prefixes if they exist in the text
+                  const isSelected = studentAnswers[globalIndex] === letter;
                   const cleanedOpt = opt.replace(/^(Option\s+[A-D][:.]\s*|[A-D][:.]\s*)/i, '').trim();
                   return (
-                    <label key={i} className="option" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '10px', background: studentAnswers[globalIndex] === letter ? '#e6f7ff' : '#f9f9f9', borderRadius: '6px' }}>
-                      <input 
-                        type="radio" 
-                        name={`question-${globalIndex}`} 
-                        value={letter}
-                        checked={studentAnswers[globalIndex] === letter}
-                        onChange={(e) => handleStudentAnswerChange(globalIndex, e.target.value)}
-                      />
-                      <span>{letter}: <MathRenderer text={cleanedOpt} /></span>
-                    </label>
+                    <div 
+                      key={i} 
+                      className={`option-v2-btn ${isSelected ? 'selected' : ''}`}
+                      onClick={() => handleStudentAnswerChange(globalIndex, letter)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="option-indicator">{letter}</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 500 }}>
+                        <MathRenderer text={cleanedOpt} />
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -386,12 +389,17 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
           </div>
         ) : (
           q.options && (
-            <div className="options" style={{ marginTop: '15px' }}>
+            <div className="options-v2-grid" style={{ marginTop: '1.5rem' }}>
               {q.options.map((opt, i) => {
                 const letter = String.fromCharCode(65 + i);
                 const cleanedOpt = opt.replace(/^(Option\s+[A-D][:.]\s*|[A-D][:.]\s*)/i, '').trim();
                 return (
-                  <p key={i} className="option">{letter}: <MathRenderer text={cleanedOpt} /></p>
+                  <div key={i} className="option-v2-btn disabled" style={{ cursor: 'default' }}>
+                    <div className="option-indicator">{letter}</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 500 }}>
+                      <MathRenderer text={cleanedOpt} />
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -578,16 +586,30 @@ export function QuestionGenerator({ onSimulationToggle, isSimulating, showHistor
             </div>
 
             <div className="form-group">
-              <label htmlFor="subject">Choose Subject:</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label style={{ marginBottom: 0 }}>Choose Subject:</label>
+                <input 
+                  type="text" 
+                  placeholder="Search..." 
+                  value={subjectSearch}
+                  onChange={(e) => setSubjectSearch(e.target.value)}
+                  className="chat-input"
+                  style={{ width: '120px', padding: '4px 10px', fontSize: '0.85rem' }}
+                />
+              </div>
               <select
                 id="subject"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 disabled={loadingSubjects}
               >
-                {filteredSubjects.map((subj) => (
-                  <option key={subj.id} value={subj.id}>{subj.name}</option>
-                ))}
+                {filteredSubjects.length > 0 ? (
+                  filteredSubjects.map((subj) => (
+                    <option key={subj.id} value={subj.id}>{subj.name.replace(/_/g, ' ')}</option>
+                  ))
+                ) : (
+                  <option disabled>No subjects found</option>
+                )}
               </select>
             </div>
 

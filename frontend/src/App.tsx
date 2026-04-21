@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import './index.css'
 import { QuestionGenerator } from './components/QuestionGenerator'
 import StudyCoach from './components/StudyCoach'
@@ -113,6 +113,13 @@ function App() {
       'light'
     );
   });
+  const [isDiscoveryPlaying, setIsDiscoveryPlaying] = useState(true);
+  
+  useEffect(() => {
+    // Discovery slideshow plays once for 10 seconds total to show all tabs clearly
+    const timer = setTimeout(() => setIsDiscoveryPlaying(false), 12000);
+    return () => clearTimeout(timer);
+  }, []);
   const [activeTab, setActiveTab] = React.useState<AppTab>('study')
   const [isExamSimulating, setIsExamSimulating] = React.useState(false)
   const [account, setAccount] = React.useState<AuthUser | null>(null)
@@ -514,33 +521,26 @@ function App() {
                 </button>
               ) : (
                 <>
-                  <button className={`nav-link ${activeTab === 'study' ? 'active' : ''}`} onClick={() => setActiveTab('study')}>
-                    <span className="nav-icon">🧠</span>
-                    Study <span className="nav-full-text">with AI</span>
+                  <button className={`nav-link ${activeTab === 'study' ? 'active' : ''} ${isDiscoveryPlaying ? 'discovery-reveal' : ''}`} style={{ animationDelay: '0.2s' }} onClick={() => setActiveTab('study')}>
+                    <span className="nav-icon">🧠</span> Study <span className="nav-full-text">with AI</span>
                   </button>
-                  <button className={`nav-link ${activeTab === 'generator' ? 'active' : ''}`} onClick={() => openAuthGate('generator')}>
-                    <span className="nav-icon">📝</span>
-                    Practice <span className="nav-full-text">Sets</span>
+                  <button className={`nav-link ${activeTab === 'generator' ? 'active' : ''} ${isDiscoveryPlaying ? 'discovery-reveal' : ''}`} style={{ animationDelay: '1.2s' }} onClick={() => openAuthGate('generator')}>
+                    <span className="nav-icon">📝</span> Practice <span className="nav-full-text">Questions</span>
                   </button>
-                  <button className={`nav-link ${activeTab === 'analysis' ? 'active' : ''}`} onClick={() => openAuthGate('analysis')}>
-                    <span className="nav-icon">📊</span>
-                    WASSCE <span className="nav-full-text">Questions</span>
+                  <button className={`nav-link ${activeTab === 'analysis' ? 'active' : ''} ${isDiscoveryPlaying ? 'discovery-reveal' : ''}`} style={{ animationDelay: '2.2s' }} onClick={() => openAuthGate('analysis')}>
+                    <span className="nav-icon">📊</span> Likely WASSCE <span className="nav-full-text">Questions</span>
                   </button>
-                  <button className={`nav-link ${activeTab === 'live_quiz' ? 'active' : ''}`} onClick={() => openAuthGate('live_quiz')}>
-                    <span className="nav-icon">⚡</span>
-                    Quiz <span className="nav-full-text">Challenge</span>
+                  <button className={`nav-link ${activeTab === 'live_quiz' ? 'active' : ''} ${isDiscoveryPlaying ? 'discovery-reveal' : ''}`} style={{ animationDelay: '3.2s' }} onClick={() => openAuthGate('live_quiz')}>
+                    <span className="nav-icon">⚡</span> Quiz <span className="nav-full-text">Challenge</span>
                   </button>
-                  <button className={`nav-link ${activeTab === 'competitions' ? 'active' : ''}`} onClick={() => openAuthGate('competitions')}>
-                    <span className="nav-icon">📰</span>
-                    News <span className="nav-full-text">& Updates</span>
+                  <button className={`nav-link ${activeTab === 'competitions' ? 'active' : ''} ${isDiscoveryPlaying ? 'discovery-reveal' : ''}`} style={{ animationDelay: '4.2s' }} onClick={() => openAuthGate('competitions')}>
+                    <span className="nav-icon">📰</span> News <span className="nav-full-text">& Updates</span>
                   </button>
-                  <button className={`nav-link ${activeTab === 'resources' ? 'active' : ''}`} onClick={() => openAuthGate('resources')}>
-                    <span className="nav-icon">📚</span>
-                    Library
+                  <button className={`nav-link ${activeTab === 'resources' ? 'active' : ''} ${isDiscoveryPlaying ? 'discovery-reveal' : ''}`} style={{ animationDelay: '5.2s' }} onClick={() => openAuthGate('resources')}>
+                    <span className="nav-icon">📚</span> Digital <span className="nav-full-text">Library</span>
                   </button>
-                  <button className={`nav-link ${activeTab === 'history' ? 'active' : ''}`} onClick={() => openAuthGate('history')}>
-                    <span className="nav-icon">🕒</span>
-                    History
+                  <button className={`nav-link ${activeTab === 'history' ? 'active' : ''} ${isDiscoveryPlaying ? 'discovery-reveal' : ''}`} style={{ animationDelay: '6.2s' }} onClick={() => openAuthGate('history')}>
+                    <span className="nav-icon">🕒</span> Study <span className="nav-full-text">History</span>
                   </button>
                 </>
               )}
@@ -555,7 +555,7 @@ function App() {
                   <div className="user-profile">
                     <div className="user-profile__avatar">{account.full_name.charAt(0)}</div>
                     <div className="user-profile__info">
-                      <span className="user-name">{account.full_name.split(' ')[0]}</span>
+                      <span className="user-name">{account.full_name}</span>
                       {isSubscribed ? (
                         <span className="sub-badge sub-badge--active" title={subDaysLeft !== null ? `${subDaysLeft} days remaining` : 'Active'}>
                           <span className="badge-icon">✓</span> active
@@ -618,7 +618,7 @@ function App() {
                 className={`drawer-link ${activeTab === 'admin' ? 'active' : ''}`} 
                 onClick={() => { setActiveTab('admin'); setMobileMenuOpen(false); }}
               >
-                <span className="drawer-icon">🛡️</span> Admin Dashboard
+                <span className="drawer-icon">🛡️</span> Admin <span className="nav-full-text">Dashboard</span>
               </button>
             ) : (
               <>
@@ -626,43 +626,43 @@ function App() {
                   className={`drawer-link ${activeTab === 'study' ? 'active' : ''}`} 
                   onClick={() => { setActiveTab('study'); setMobileMenuOpen(false); }}
                 >
-                  <span className="drawer-icon">🧠</span> Study with AI
+                  <span className="drawer-icon">🧠</span> Study <span className="nav-full-text">with AI</span>
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'generator' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('generator'); setMobileMenuOpen(false); }}
                 >
-                  <span className="drawer-icon">📝</span> Practice Sets
+                  <span className="drawer-icon">📝</span> Practice <span className="nav-full-text">Questions</span>
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'analysis' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('analysis'); setMobileMenuOpen(false); }}
                 >
-                  <span className="drawer-icon">📊</span> WASSCE Questions
+                  <span className="drawer-icon">📊</span> Likely WASSCE <span className="nav-full-text">Questions</span>
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'live_quiz' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('live_quiz'); setMobileMenuOpen(false); }}
                 >
-                  <span className="drawer-icon">⚡</span> Quiz Challenge
+                  <span className="drawer-icon">⚡</span> Quiz <span className="nav-full-text">Challenge</span>
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'competitions' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('competitions'); setMobileMenuOpen(false); }}
                 >
-                  <span className="drawer-icon">📰</span> News & Updates
+                  <span className="drawer-icon">📰</span> News <span className="nav-full-text">& Updates</span>
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'resources' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('resources'); setMobileMenuOpen(false); }}
                 >
-                  <span className="drawer-icon">📚</span> Library
+                  <span className="drawer-icon">📚</span> Digital <span className="nav-full-text">Library</span>
                 </button>
                 <button 
                   className={`drawer-link ${activeTab === 'history' ? 'active' : ''}`} 
                   onClick={() => { openAuthGate('history'); setMobileMenuOpen(false); }}
                 >
-                  <span className="drawer-icon">🕒</span> History
+                  <span className="drawer-icon">🕒</span> Study <span className="nav-full-text">History</span>
                 </button>
               </>
             )}

@@ -57,6 +57,7 @@ export function AnalysisDashboard() {
   const [isSimulating, setIsSimulating] = useState(false);
   const [examHistory, setExamHistory] = useState<ExamHistoryEntry[]>([]);
   const [generationMeta, setGenerationMeta] = useState<GeneratedQuestions | null>(null);
+  const [subjectSearch, setSubjectSearch] = useState('');
 
   const availableYears = useMemo(() => {
     const years = Array.from(new Set(subjects.map((item) => item.year))).sort();
@@ -67,11 +68,16 @@ export function AnalysisDashboard() {
   }, [subjects]);
 
   const filteredSubjects = useMemo(() => {
-    if (selectedYear === 'Year 3') {
-      return Array.from(new Map(subjects.map((item) => [item.name, item])).values());
+    let list = selectedYear === 'Year 3'
+      ? Array.from(new Map(subjects.map((item) => [item.name, item])).values())
+      : subjects.filter((item) => item.year === selectedYear);
+    
+    if (subjectSearch.trim()) {
+      list = list.filter(s => s.name.toLowerCase().includes(subjectSearch.toLowerCase()));
     }
-    return subjects.filter((item) => item.year === selectedYear);
-  }, [selectedYear, subjects]);
+    
+    return list;
+  }, [selectedYear, subjects, subjectSearch]);
 
   const activeSubjectLabel = useMemo(
     () => filteredSubjects.find((item) => item.id === subject)?.name || subject,
@@ -440,11 +446,25 @@ export function AnalysisDashboard() {
               </select>
             </div>
             <div className="form-group">
-              <label>Select Subject</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <label style={{ marginBottom: 0 }}>Select Subject</label>
+                <input 
+                  type="text" 
+                  placeholder="Search..." 
+                  value={subjectSearch}
+                  onChange={(e) => setSubjectSearch(e.target.value)}
+                  className="chat-input"
+                  style={{ width: '120px', padding: '4px 10px', fontSize: '0.85rem' }}
+                />
+              </div>
               <select value={subject} onChange={(event) => setSubject(event.target.value)}>
-                {filteredSubjects.map((item) => (
-                  <option key={item.id} value={item.id}>{item.name}</option>
-                ))}
+                {filteredSubjects.length > 0 ? (
+                  filteredSubjects.map((item) => (
+                    <option key={item.id} value={item.id}>{item.name.replace(/_/g, ' ')}</option>
+                  ))
+                ) : (
+                  <option disabled>No subjects found</option>
+                )}
               </select>
             </div>
             <div className="form-group">
