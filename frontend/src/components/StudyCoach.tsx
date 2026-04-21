@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { questionsAPI, tutorAPI, type TutorResponse } from '../services/api';
+import { tutorAPI, type TutorResponse } from '../services/api';
 import MathRenderer from './MathRenderer';
 
 interface Message {
@@ -85,8 +85,6 @@ export function StudyCoach({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [subject, setSubject] = useState('General');
-  const [subjects, setSubjects] = useState<Array<{ id: string; name: string; year: string }>>([]);
   const [image, setImage] = useState<File | null>(null);
   const [historyItems, setHistoryItems] = useState<Array<{ id: number; content: string; created_at: string }>>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -99,12 +97,6 @@ export function StudyCoach({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const hasMessages = messages.length > 0;
-
-  useEffect(() => {
-    questionsAPI.getSubjects()
-      .then(d => setSubjects(d.subjects || []))
-      .catch(() => {});
-  }, []);
 
   // Load history for authenticated users
   useEffect(() => {
@@ -159,7 +151,7 @@ export function StudyCoach({
         ? await tutorAPI.interpretImage({
             image_base64: await fileToBase64(image),
             question: text || 'Interpret this image.',
-            subject: subject,
+            subject: 'General',
             filename: image.name,
             content_type: image.type,
             is_main_concept_only: isMainConceptOnly,
@@ -167,7 +159,7 @@ export function StudyCoach({
           })
         : await tutorAPI.ask({
             question: text,
-            subject: subject,
+            subject: 'General',
             is_main_concept_only: isMainConceptOnly,
             history: history
           });
@@ -214,7 +206,6 @@ export function StudyCoach({
     }));
 
     setMessages(mapped);
-    if (clickedMsg.subject) setSubject(clickedMsg.subject);
   };
 
   return (
@@ -344,27 +335,6 @@ export function StudyCoach({
           )}
 
           <div className="gemini-input-bar">
-            {/* Subject pill with search */}
-            <div className="gemini-subject-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-
-              <select
-                className="gemini-subject"
-                value={subject}
-                onChange={e => setSubject(e.target.value)}
-                title="Select subject"
-                style={{ flex: 1, height: '42px', borderRadius: '12px' }}
-              >
-                <option value="General">General (Global AI)</option>
-                {subjects
-                  .map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name.replace(/_/g, ' ')} ({s.year})
-                    </option>
-                  ))
-                }
-              </select>
-            </div>
-
             <textarea
               ref={textareaRef}
               className="gemini-textarea"
