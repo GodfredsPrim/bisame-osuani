@@ -12,7 +12,7 @@ if ($BackendOnly -and $FrontendOnly) {
 
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $BackendDir = Join-Path $RepoRoot "backend"
-$FrontendDir = Join-Path $RepoRoot "frontend"
+$FrontendDir = Join-Path $RepoRoot "web"
 $BackendEnvFile = Join-Path $BackendDir ".env"
 $BackendEnvExampleFile = Join-Path $BackendDir ".env.example"
 
@@ -82,7 +82,7 @@ if (-not $BackendOnly) {
     Start-InNewWindow `
         -WindowTitle "BisaME Frontend" `
         -WorkingDirectory $FrontendDir `
-        -Command "npm run dev -- --host 0.0.0.0 --port 5173"
+        -Command "npm run dev -- --port 3000"
 }
 
 Write-Step "System startup requested"

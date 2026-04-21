@@ -16,7 +16,7 @@ from app.services.batch_loader import BatchLoader
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-FRONTEND_DIST_DIR = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+FRONTEND_DIST_DIR = Path(__file__).resolve().parents[2] / "web" / "out"
 FRONTEND_INDEX_FILE = FRONTEND_DIST_DIR / "index.html"
 
 # Global loading state
