@@ -22,9 +22,9 @@ export function LiveQuiz() {
   const [result, setResult] = useState<PracticeMarkResponse | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [timeLimit, setTimeLimit] = useState(5);
+  const [timeLimit] = useState(5);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const [semester, setSemester] = useState('all_year');
+  const [semester] = useState('all_year');
   const [subjectSearch, setSubjectSearch] = useState('');
 
   const years = useMemo(() => {
