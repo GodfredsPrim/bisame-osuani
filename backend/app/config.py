@@ -28,15 +28,39 @@ class Settings(BaseSettings):
     def db_url(self) -> str:
         # If no DATABASE_URL is provided, fallback to local SQLite
         if not self.DATABASE_URL:
-            # Note: auth.db is used as the primary for users while gh_shs.db is used for app data
-            # In Supabase/Postgres, we combine them into one DB.
             return f"sqlite:///{(self.PERSISTENCE_DIR / 'auth.db').as_posix()}"
         
-        # fix: Render and Supabase often provide postgres:// which SQLAlchemy/psycopg2 
-        # sometimes needs as postgresql://
-        if self.DATABASE_URL.startswith("postgres://"):
-            return self.DATABASE_URL.replace("postgres://", "postgresql://", 1)
-        return self.DATABASE_URL
+        # Fix: Render and Supabase often provide postgres:// which SQLAlchemy/psycopg2 
+        # sometimes needs as postgresql://. Also ensure special characters in passwords are encoded.
+        url = self.DATABASE_URL
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+            
+        # Sanitize credentials for psycopg2 (handles passwords with symbols like %)
+        if url.startswith("postgresql://"):
+            from urllib.parse import urlparse, urlunparse, quote, unquote
+            try:
+                parsed = urlparse(url)
+                if parsed.username or parsed.password:
+                    username = quote(unquote(parsed.username)) if parsed.username else ""
+                    password = quote(unquote(parsed.password)) if parsed.password else ""
+                    
+                    # Reconstruct netloc: user:pass@host:port
+                    new_netloc = ""
+                    if username and password:
+                        new_netloc = f"{username}:{password}@"
+                    elif username:
+                        new_netloc = f"{username}@"
+                    
+                    new_netloc += parsed.hostname or ""
+                    if parsed.port:
+                        new_netloc += f":{parsed.port}"
+                    
+                    url = urlunparse(parsed._replace(netloc=new_netloc))
+            except Exception:
+                pass
+                
+        return url
 
     # Authentication
     AUTH_SECRET_KEY: str = "change-this-auth-secret"
