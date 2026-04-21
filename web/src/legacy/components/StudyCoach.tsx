@@ -269,31 +269,7 @@ export function StudyCoach({
           </div>
         </div>
 
-        {/* Welcome screen — shown when no messages */}
-        {!hasMessages && (
-          <div className="gemini-welcome">
-            <div className="gemini-welcome__eyebrow">Personal AI study coach</div>
-            <div className="gemini-welcome__logo">
-              <div className="gemini-welcome__mark">Fun2Learn AI</div>
-            </div>
-            <h1 className="gemini-welcome__title">How can I help you study?</h1>
-            <p className="gemini-welcome__sub">Ask a question, upload an image, or pick a starter below.</p>
-            <div className="gemini-welcome__highlights">
-              <span>Step-by-step help</span>
-              <span>Exam-ready explanations</span>
-              <span>Image interpretation</span>
-            </div>
-
-            <div className="gemini-starters">
-              {STARTERS.map(s => (
-                <button key={s.text} className="gemini-starter" onClick={() => send(s.text)}>
-                  <span className="gemini-starter__icon">{s.icon}</span>
-                  <span>{s.text}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Removed welcome screen to fix visibility and focus on chat input */}
 
         {/* Message list */}
         {hasMessages && (
